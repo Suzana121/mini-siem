@@ -28,6 +28,8 @@ python scripts/ship_logs.py samples/auth.log
 # {'received': 17, 'parsed': 16, 'unparsed': 1}
 ```
 
+Port 8000 taken? Run `API_PORT=8080 docker compose up --build` and pass `--url http://localhost:8080` to the shipper.
+
 Without Docker (events kept in memory):
 
 ```bash
