@@ -1,0 +1,17 @@
+Oct 26 10:15:01 web01 sshd[2101]: Did not receive identification string from 203.0.113.45 port 51022
+Oct 26 10:15:32 web01 sshd[2140]: Invalid user admin from 203.0.113.45 port 51110
+Oct 26 10:15:34 web01 sshd[2140]: Failed password for invalid user admin from 203.0.113.45 port 51110 ssh2
+Oct 26 10:15:35 web01 sshd[2140]: Connection closed by invalid user admin 203.0.113.45 port 51110 [preauth]
+Oct 26 10:15:37 web01 sshd[2143]: Failed password for root from 203.0.113.45 port 51124 ssh2
+Oct 26 10:15:39 web01 sshd[2143]: Failed password for root from 203.0.113.45 port 51124 ssh2
+Oct 26 10:15:41 web01 sshd[2143]: Failed password for root from 203.0.113.45 port 51124 ssh2
+Oct 26 10:15:44 web01 sshd[2147]: Failed password for deploy from 203.0.113.45 port 51130 ssh2
+Oct 26 10:15:47 web01 sshd[2147]: Accepted password for deploy from 203.0.113.45 port 51130 ssh2
+Oct 26 10:15:47 web01 sshd[2147]: pam_unix(sshd:session): session opened for user deploy(uid=1001) by (uid=0)
+Oct 26 10:16:05 web01 sudo:   deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/sbin/useradd -m backup2
+Oct 26 10:16:05 web01 sudo: pam_unix(sudo:session): session opened for user root(uid=0) by deploy(uid=1001)
+Oct 26 10:16:05 web01 useradd[2160]: new user: name=backup2, UID=1002, GID=1002, home=/home/backup2, shell=/bin/bash, from=/dev/pts/0
+Oct 26 10:16:12 web01 usermod[2165]: add 'backup2' to group 'sudo'
+Oct 26 10:17:30 web01 sudo:   intern : 3 incorrect password attempts ; TTY=pts/1 ; PWD=/home/intern ; USER=root ; COMMAND=/bin/cat /etc/shadow
+2026-10-26T10:20:00.512345+00:00 web01 sshd[2201]: Accepted publickey for alice from 198.51.100.7 port 60222 ssh2: ED25519 SHA256:abc123
+Oct 26 10:21:00 web01 systemd[1]: Started Session 12 of user alice.
