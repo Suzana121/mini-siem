@@ -1,0 +1,17 @@
+id: ssh-brute-force
+title: SSH brute force from a single source
+description: Five or more failed SSH logins from one IP address within a minute.
+severity: medium
+mitre:
+  - id: T1110.001
+    name: "Brute Force: Password Guessing"
+    tactic: Credential Access
+match:
+  event.action: ssh_login
+  event.outcome: failure
+threshold:
+  count: 5
+  window: 60s
+  group_by: [source.ip]
+false_positives:
+  - Misconfigured automation retrying with a stale password

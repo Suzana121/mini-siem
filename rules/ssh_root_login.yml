@@ -1,0 +1,12 @@
+id: ssh-root-login
+title: Direct SSH login as root
+description: Someone logged in over SSH directly as root instead of using a personal account and sudo.
+severity: high
+mitre:
+  - id: T1078.003
+    name: "Valid Accounts: Local Accounts"
+    tactic: Privilege Escalation
+match:
+  event.action: ssh_login
+  event.outcome: success
+  user.name: root

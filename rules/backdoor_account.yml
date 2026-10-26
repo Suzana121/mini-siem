@@ -1,0 +1,22 @@
+id: backdoor-account
+title: New account granted admin rights
+description: A freshly created account was added to a privileged group within ten minutes -- a common way attackers leave a persistent backdoor.
+severity: critical
+mitre:
+  - id: T1136.001
+    name: "Create Account: Local Account"
+    tactic: Persistence
+  - id: T1098
+    name: Account Manipulation
+    tactic: Persistence
+sequence:
+  window: 10m
+  group_by: [host.name, user.target]
+  steps:
+    - name: created
+      match:
+        event.action: user_created
+    - name: privileged
+      match:
+        event.action: user_added_to_group
+        labels.group: [sudo, wheel, admin, root, docker]

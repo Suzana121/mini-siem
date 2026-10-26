@@ -1,0 +1,12 @@
+id: local-account-created
+title: Local user account created
+description: A new local account was created on the host.
+severity: medium
+mitre:
+  - id: T1136.001
+    name: "Create Account: Local Account"
+    tactic: Persistence
+match:
+  event.action: user_created
+false_positives:
+  - Planned onboarding or configuration management runs

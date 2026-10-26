@@ -1,0 +1,11 @@
+id: privileged-group-change
+title: User added to a privileged group
+description: An account was added to a group that grants administrative rights.
+severity: high
+mitre:
+  - id: T1098
+    name: Account Manipulation
+    tactic: Persistence
+match:
+  event.action: user_added_to_group
+  labels.group: [sudo, wheel, admin, root, docker]

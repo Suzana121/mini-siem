@@ -1,0 +1,24 @@
+id: ssh-brute-force-success
+title: Successful SSH login after brute force
+description: Repeated SSH login failures followed by a successful login from the same IP within ten minutes -- a likely compromised account.
+severity: critical
+mitre:
+  - id: T1110
+    name: Brute Force
+    tactic: Credential Access
+  - id: T1078
+    name: Valid Accounts
+    tactic: Initial Access
+sequence:
+  window: 10m
+  group_by: [source.ip]
+  steps:
+    - name: failures
+      match:
+        event.action: ssh_login
+        event.outcome: failure
+      min_count: 5
+    - name: success
+      match:
+        event.action: ssh_login
+        event.outcome: success

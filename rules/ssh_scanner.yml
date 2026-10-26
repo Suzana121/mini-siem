@@ -1,0 +1,16 @@
+id: ssh-scanner
+title: SSH service scanning
+description: A source repeatedly opens SSH connections without sending a protocol banner, typical of port scanners and service fingerprinting.
+severity: low
+mitre:
+  - id: T1046
+    name: Network Service Discovery
+    tactic: Discovery
+match:
+  event.action: ssh_no_identification
+threshold:
+  count: 3
+  window: 60s
+  group_by: [source.ip]
+false_positives:
+  - Load balancer or uptime health checks against port 22

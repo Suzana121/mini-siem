@@ -1,0 +1,13 @@
+id: sudo-auth-failure
+title: Failed sudo authentication
+description: A user entered the wrong password for sudo repeatedly, which may indicate someone trying to escalate privileges from a hijacked session.
+severity: medium
+mitre:
+  - id: T1548.003
+    name: "Abuse Elevation Control Mechanism: Sudo and Sudo Caching"
+    tactic: Privilege Escalation
+match:
+  event.action: sudo_command
+  event.outcome: failure
+false_positives:
+  - Users mistyping their password

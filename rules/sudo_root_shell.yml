@@ -1,0 +1,13 @@
+id: sudo-root-shell
+title: Interactive root shell via sudo
+description: A user used sudo to start a root shell, bypassing per-command sudo auditing.
+severity: medium
+mitre:
+  - id: T1548.003
+    name: "Abuse Elevation Control Mechanism: Sudo and Sudo Caching"
+    tactic: Privilege Escalation
+match:
+  event.action: sudo_command
+  event.outcome: success
+  user.target: root
+  labels.command|re: '^(/usr)?/bin/(ba|z|da|k)?sh( -[il])?$|^(/usr)?/bin/su( -)?$'
