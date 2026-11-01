@@ -112,11 +112,11 @@ Apple M2 Max, Docker Desktop (12 CPUs), single detector worker, 12 rules:
 | `POST /ingest` (accepted = parsed and queued) | ~35-44k lines/s with 4 clients |
 | Full pipeline through Redis → detector → PostgreSQL | ~7.2k lines/s sustained (100k-line backlog processed in 14 s) |
 | Ingest → alert visible (p50 / p95 / p99) | 90 / 98 / 102 ms for attack bursts under 200 lines/s of background traffic, on a database already holding 10k alerts |
-| Dashboard API at ~10k alerts | `/alerts` p50 8.5 ms (50 rows), `/stats/summary` and `/stats/attack` p50 ~350-375 ms |
+| Dashboard API at ~10k alerts | `/alerts` p50 ~6-8 ms (50 rows), `/stats/summary` p50 27 ms, `/stats/attack` p50 14 ms (aggregated in SQL; was ~360 ms and ~350 ms when aggregated in Python). Measured with the API running in-process on the host against Docker PostgreSQL, not the full compose stack |
 
 The lab's time-to-detect is measured from the attack's start to the alert appearing, at about one second of resolution because syslog timestamps are whole seconds.
 
-Known limit: `/stats/*` read every alert (capped at 100k) and aggregate in Python, so their cost grows linearly with history; moving the aggregation into SQL is the obvious next optimization.
+Known limit: `/stats/*` aggregate in SQL over the whole `alerts` table (a scan, no rollup table), so their cost still grows with history, though far more slowly than shipping every alert to Python did; a materialized or incrementally maintained rollup is the next step if history reaches millions of alerts.
 
 Detection cost grows linearly with the number of rules, so the engine is single-worker by design (see Design notes).
 
