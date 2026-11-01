@@ -150,9 +150,10 @@ Running the API without `REDIS_URL` (`.venv/bin/uvicorn app.main:app --reload`) 
 
 ```bash
 .venv/bin/pytest
-# include the PostgreSQL store tests:
+# include the PostgreSQL store tests (they TRUNCATE tables, so use a separate database):
 docker compose up -d postgres
-TEST_DATABASE_URL=postgresql://siem:siem-dev-only@localhost:5432/siem .venv/bin/pytest
+docker compose exec postgres createdb -U siem siem_test
+TEST_DATABASE_URL=postgresql://siem:siem-dev-only@localhost:5432/siem_test .venv/bin/pytest
 ```
 
 ## Roadmap

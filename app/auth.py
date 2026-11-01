@@ -389,7 +389,7 @@ class PostgresAuthStore:
             return _user(row)
 
     async def create_session(self, user_id, token_hash, expires_at) -> None:
-        await self._pool.execute("DELETE FROM sessions WHERE expires_at <= now()")
+        await self._pool.execute("DELETE FROM sessions WHERE expires_at <= $1", _now())
         await self._pool.execute(
             "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)",
             token_hash,
@@ -402,9 +402,10 @@ class PostgresAuthStore:
             """
             SELECT u.id, u.username, u.password_hash, u.role, u.disabled, u.created_at
             FROM sessions s JOIN users u ON u.id = s.user_id
-            WHERE s.token_hash = $1 AND s.expires_at > now()
+            WHERE s.token_hash = $1 AND s.expires_at > $2
             """,
             token_hash,
+            _now(),
         )
         return _user(row)
 
