@@ -66,6 +66,8 @@ th { font-size: .8rem; color: var(--muted); }
 .evidence, .raw { font-family: ui-monospace, monospace; font-size: .8rem; }
 .evidence { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 .raw { word-break: break-all; }
+/* Keep the raw column readable on phones: the table scrolls inside .table-wrap instead of squeezing this cell. */
+.raw-cell { min-width: 280px; }
 .key-once { margin: 12px 0; border-color: var(--accent); }
 .heatmap { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(160px, 1fr); gap: 8px; overflow-x: auto; margin-top: 16px; padding-bottom: 8px; }
 .tactic h2 { font-size: .85rem; margin: 0 0 8px; }

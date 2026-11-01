@@ -145,6 +145,16 @@ async def test_alert_events_apply_group_fields():
     assert [e.user.name for e in await alert_events(es, stored)] == ["bob"]
 
 
+async def test_alert_events_without_group_or_ip_narrow_by_user():
+    es = MemoryEventStore()
+    local = make_event(0, ip=None, user="intern")
+    local.user.target = "root"
+    await es.add([local, make_event(1, ip=None, user="deploy"), make_event(2, ip="203.0.113.9", user="intern")])
+    stored, _ = await MemoryAlertStore().save(make_alert(ip=None, user="intern", group={}))
+    stored.user.target = "root"
+    assert [e.raw for e in await alert_events(es, stored)] == ["line at 0"]
+
+
 async def test_summarize():
     store = MemoryAlertStore()
     a, _ = await store.save(make_alert(ip="198.51.100.7", user="root", risk_score=70))

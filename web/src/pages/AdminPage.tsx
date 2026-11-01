@@ -11,7 +11,7 @@ function Users() {
   const users = useQuery({ queryKey: ["users"], queryFn: api.users });
   const refresh = () => qc.invalidateQueries({ queryKey: ["users"] });
   const update = useMutation({
-    mutationFn: (v: { id: string; role?: Role; disabled?: boolean }) => api.updateUser(v.id, v),
+    mutationFn: ({ id, ...changes }: { id: string; role?: Role; disabled?: boolean }) => api.updateUser(id, changes),
     onSuccess: refresh,
   });
   const create = useMutation({ mutationFn: api.createUser, onSuccess: refresh });
