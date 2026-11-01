@@ -18,7 +18,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from app.detection.rules import MitreTechnique, Rule, get_field
-from app.schema import NormalizedEvent
+from app.schema import NormalizedEvent, SourceInfo, ThreatInfo, UserInfo
 
 MAX_EVIDENCE = 20
 SWEEP_EVERY = 10_000  # events between purges of idle state
@@ -36,6 +36,13 @@ class Alert(BaseModel):
     group: dict[str, Any]
     count: int
     evidence: list[str]  # raw log lines, most recent MAX_EVIDENCE
+    # Context copied from the triggering event (including enrichment).
+    source: SourceInfo = Field(default_factory=SourceInfo)
+    user: UserInfo = Field(default_factory=UserInfo)
+    threat: ThreatInfo = Field(default_factory=ThreatInfo)
+    # Set by app/scoring.py after detection.
+    risk_score: int = 0
+    risk_factors: list[str] = Field(default_factory=list)
 
 
 @dataclass
@@ -163,6 +170,9 @@ class DetectionEngine:
             group=group,
             count=count,
             evidence=evidence,
+            source=event.source.model_copy(deep=True),
+            user=event.user.model_copy(),
+            threat=event.threat.model_copy(deep=True),
         )
 
     def _sweep(self, now: datetime) -> None:

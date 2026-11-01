@@ -36,9 +36,27 @@ class UserInfo(BaseModel):
     target: str | None = None  # user being switched to (sudo/su)
 
 
+class GeoInfo(BaseModel):
+    country_iso: str | None = None
+    country: str | None = None
+    city: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+
+
 class SourceInfo(BaseModel):
     ip: str | None = None
     port: int | None = None
+    # Filled in by enrichment (app/enrichment.py), not by parsers.
+    internal: bool | None = None  # private, loopback, documentation ranges, ...
+    geo: GeoInfo | None = None
+
+
+class ThreatInfo(BaseModel):
+    """Threat-intel matches for source.ip, filled in by enrichment."""
+
+    listed: bool = False
+    feeds: list[str] = Field(default_factory=list)
 
 
 class NormalizedEvent(BaseModel):
@@ -49,5 +67,6 @@ class NormalizedEvent(BaseModel):
     process: ProcessInfo = Field(default_factory=ProcessInfo)
     user: UserInfo = Field(default_factory=UserInfo)
     source: SourceInfo = Field(default_factory=SourceInfo)
+    threat: ThreatInfo = Field(default_factory=ThreatInfo)
     labels: dict[str, str] = Field(default_factory=dict)
     raw: str

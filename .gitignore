@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .env
 *.egg-info/
+# Downloaded at setup time (scripts/download_geoip.py, scripts/update_intel.py)
+data/*
+!data/.gitkeep
+intel/*.txt

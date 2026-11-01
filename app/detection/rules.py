@@ -67,6 +67,11 @@ class _Condition:
 
     def matches(self, doc: dict) -> bool:
         actual = get_field(doc, self.field)
+        if isinstance(actual, list):  # e.g. threat.feeds: any element may match
+            return any(self._matches_value(item) for item in actual)
+        return self._matches_value(actual)
+
+    def _matches_value(self, actual: Any) -> bool:
         if actual is None:
             return False
         if self.modifier == "re":
