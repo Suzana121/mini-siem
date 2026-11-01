@@ -2,7 +2,7 @@
 
 A lightweight Security Information and Event Management pipeline: ingest raw logs, normalize them to a common schema, run detection rules mapped to MITRE ATT&CK, and surface alerts.
 
-> **Status:** Stage 2 of 5 — detection engine with 11 MITRE-mapped rules.
+> **Status:** Stage 4 of 5 — React dashboard (alert triage, raw-event drill-down, ATT&CK heatmap) with user accounts and roles, on top of enrichment, risk scoring, deduplicated alert storage and signed webhooks.
 
 ## Architecture
 
@@ -10,7 +10,12 @@ A lightweight Security Information and Event Management pipeline: ingest raw log
 log shippers ──► Ingest API (FastAPI) ──► parser ──► Redis Stream "siem:events"
                        ▲                                     │ consumer group
                        │                                     ▼
-                  GET /alerts ◄── Redis Stream "siem:alerts" ◄── detection worker (YAML rules)
+        GET/PATCH /alerts                            detection worker
+                       │          enrich (GeoIP, threat intel) → detect (YAML rules)
+                       │          → score (0-100) → store/dedup → notify
+                       ▼                                     │
+                  PostgreSQL ◄──────── alerts ───────────────┤
+                                                             └──► webhooks (Slack / JSON, HMAC-signed)
 ```
 
 Every parser emits a `NormalizedEvent` (ECS-inspired: `event.category/action/outcome`, `user`, `source.ip`, `host`, `process`), so detection rules are written once against a stable set of fields, not per log format.
@@ -56,8 +61,29 @@ Selections AND their keys, OR list values, compare case-insensitively, and suppo
 | `local-account-created` | medium | T1136.001 |
 | `privileged-group-change` — user added to sudo/wheel/docker… | high | T1098 |
 | `backdoor-account` — new account made admin within 10m | critical | T1136.001, T1098 |
+| `ssh-login-threat-intel` — successful login from an IP on a threat-intel feed | critical | T1078 |
 
 Every rule has positive and negative test cases written as real log lines ([`tests/test_detection_rules.py`](tests/test_detection_rules.py)), and a test fails if any rule lacks a positive case.
+
+## Enrichment & alerting
+
+- **Threat intel.** Every `*.txt` file in `intel/` is a feed (one IP/CIDR per line, `#`/`;` comments). `python scripts/update_intel.py` downloads FireHOL Level 1, Spamhaus DROP and blocklist.de SSH. Lookups use one hash table per prefix length, so cost doesn't grow with list size. Matches set `threat.listed` / `threat.feeds`, which rules can match on.
+- **GeoIP.** `python scripts/download_geoip.py` fetches the free DB-IP City Lite database (MaxMind format, CC BY 4.0). Private and documentation ranges are marked `source.internal` and skipped.
+- **Risk score.** Rule severity sets a base score; threat-intel hits, external sources and the root account add points. Each point comes with a readable reason in `risk_factors`.
+- **Deduplication.** Repeats of an open alert (same rule, host and grouping key within `DEDUP_WINDOW`, default 15m) are merged: `occurrences` and evidence grow, and no new notification is sent.
+- **Webhooks.** New alerts at or above `WEBHOOK_MIN_SEVERITY` are POSTed to `WEBHOOK_URLS` (Slack-formatted for Slack URLs, JSON otherwise), with retries and exponential backoff. With `WEBHOOK_SECRET`, each request carries `X-MiniSIEM-Signature: sha256=<HMAC>`. Try it with `python scripts/webhook_receiver.py --secret s3cret`.
+
+All settings are environment variables, documented in [`app/config.py`](app/config.py). Without a database, GeoIP file or feeds, everything still runs, just without that piece.
+
+## Dashboard & access control
+
+The dashboard (React + TypeScript, source in [`web/`](web)) is served at `/` by the API container: alerts with KPIs, filters and search; per-alert detail with risk factors, evidence and **related raw events** from the event store (`EVENT_RETENTION`, default 7d); an **ATT&CK heatmap** of tactics and techniques; and an Admin page for users and API keys.
+
+- **Roles.** `viewer` reads, `analyst` also triages (acknowledge/close), `admin` also manages users and API keys.
+- **First admin.** Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` (12+ characters) before the first start, or run `python -m scripts.create_user NAME --role admin`.
+- **Sessions.** Passwords are argon2id hashes; sessions are opaque tokens stored hashed, in an HttpOnly, SameSite=Strict cookie, with a CSRF header on writes and login throttling. Set `COOKIE_SECURE=true` behind TLS (the compose file defaults to `false` for local HTTP).
+- **Log shippers** authenticate with an API key (Admin page): `python scripts/ship_logs.py samples/auth.log --api-key msk_...` or `SIEM_API_KEY`.
+- **Frontend development:** `cd web && npm ci && npm run dev` (proxies to the API on :8000); `npm test`, `npm run build`.
 
 ## Supported sources
 
@@ -68,10 +94,12 @@ Every rule has positive and negative test cases written as real log lines ([`tes
 ## Quick start
 
 ```bash
-docker compose up --build
-python scripts/ship_logs.py samples/auth.log
-curl localhost:8000/alerts
+ADMIN_PASSWORD='choose-a-long-passphrase' docker compose up --build   # api + dashboard, detector, redis, postgres
+# open http://localhost:8000, sign in as admin, create an API key under Admin, then:
+python scripts/ship_logs.py samples/auth.log --api-key msk_...
 ```
+
+The detector loads the demo feed in `samples/intel/`, which lists the sample attacker (203.0.113.45, a documentation address), so the brute-force alerts come out with a threat-intel match and a higher risk score.
 
 Port 8000 taken? Run `API_PORT=8080 docker compose up --build` and pass `--url http://localhost:8080` to the shipper.
 
@@ -82,12 +110,16 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m scripts.detect samples/auth.log
 ```
 
+```bash
+.venv/bin/python -m scripts.detect samples/auth.log --intel samples/intel
 ```
-2026-10-26 10:15:44  MEDIUM    ssh-brute-force              [T1110.001]  {'source.ip': '203.0.113.45'}
-2026-10-26 10:15:47  CRITICAL  ssh-brute-force-success      [T1110, T1078]  {'source.ip': '203.0.113.45'}
-2026-10-26 10:16:12  CRITICAL  backdoor-account             [T1136.001, T1098]  {'host.name': 'web01', 'user.target': 'backup2'}
+
+```
+2026-10-26 10:15:47  CRITICAL risk 100  ssh-login-threat-intel       [T1078]
+                                          threat intel: demo-blocklist
+2026-10-26 10:16:12  CRITICAL risk  90  backdoor-account             [T1136.001, T1098]
 ...
-7 alert(s), 11 rules loaded
+8 alert(s), 12 rules, intel feeds: {'demo-blocklist': 2}
 ```
 
 Running the API without `REDIS_URL` (`.venv/bin/uvicorn app.main:app --reload`) runs detection inline in memory. Interactive API docs: http://localhost:8000/docs
@@ -96,11 +128,17 @@ Running the API without `REDIS_URL` (`.venv/bin/uvicorn app.main:app --reload`) 
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/ingest` | `{"source": "auth.log", "lines": [...]}` (max 10,000 lines) → counts of parsed/unparsed |
-| `GET` | `/alerts?limit=50` | Most recent alerts, newest first, with MITRE techniques and evidence lines |
+| `POST` | `/auth/login`, `/auth/logout`; `GET /auth/me` | Session handling |
+| `GET/POST/PATCH` | `/users`, `/api-keys` | Admin only |
+| `POST` | `/ingest` | API key or analyst+ session. `{"source": "auth.log", "lines": [...]}` (max 10,000 lines) → counts of parsed/unparsed |
+| `GET` | `/alerts?status=&severity=&rule_id=&q=&since=&offset=&limit=50` | Alerts, newest first, with MITRE techniques, enrichment, risk score and evidence lines |
+| `GET` | `/alerts/{id}/events`, `/events?source_ip=&user=&host=&around=&window=` | Raw-event drill-down |
+| `GET` | `/stats/summary`, `/stats/attack` | KPIs, top sources, ATT&CK matrix |
+| `GET` | `/alerts/{id}` | One alert |
+| `PATCH` | `/alerts/{id}` | Analyst+. `{"status": "acknowledged" \| "closed"}` — triage |
 | `GET` | `/rules` | Loaded detection rules |
 | `GET` | `/sources` | Supported log sources |
-| `GET` | `/health` | Liveness, including Redis connectivity |
+| `GET` | `/health` | Public liveness and Redis connectivity |
 
 ## Design notes
 
@@ -112,14 +150,18 @@ Running the API without `REDIS_URL` (`.venv/bin/uvicorn app.main:app --reload`) 
 
 ```bash
 .venv/bin/pytest
+# include the PostgreSQL store tests (they TRUNCATE tables, so use a separate database):
+docker compose up -d postgres
+docker compose exec postgres createdb -U siem siem_test
+TEST_DATABASE_URL=postgresql://siem:siem-dev-only@localhost:5432/siem_test .venv/bin/pytest
 ```
 
 ## Roadmap
 
 1. ✅ Ingestion & normalization (auth.log)
 2. ✅ Detection engine — YAML rules, thresholds, sequences, MITRE ATT&CK mapping
-3. Enrichment & alerting — GeoIP, threat-intel feeds, severity scoring, dedup, webhooks, alert storage in PostgreSQL
-4. Dashboard — alert triage, raw-event drill-down, ATT&CK heatmap
+3. ✅ Enrichment & alerting — GeoIP, threat-intel feeds, severity scoring, dedup, webhooks, alert storage in PostgreSQL
+4. ✅ Dashboard — alert triage, raw-event drill-down, ATT&CK heatmap, login with roles
 5. Attack lab & benchmarks — scripted attacks against a local lab VM, throughput/latency numbers
 
-More parsers (nginx access, Windows EVTX) are planned alongside stage 3.
+More parsers (nginx access, Windows EVTX) are planned.

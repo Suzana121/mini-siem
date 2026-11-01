@@ -1,21 +1,46 @@
+x-siem-env: &siem-env
+  REDIS_URL: redis://redis:6379/0
+  DATABASE_URL: postgresql://siem:${POSTGRES_PASSWORD:-siem-dev-only}@postgres:5432/siem
+  EVENT_RETENTION: ${EVENT_RETENTION:-7d}
+
 services:
   api:
     build: .
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      REDIS_URL: redis://redis:6379/0
+      <<: *siem-env
+      # Set ADMIN_PASSWORD (12+ chars) to create the first admin on startup.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # The dashboard is served over plain HTTP locally; set true behind TLS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   detector:
     build: .
     command: ["python", "-m", "app.worker"]
     environment:
-      REDIS_URL: redis://redis:6379/0
+      <<: *siem-env
+      GEOIP_DB: /srv/data/dbip-city-lite.mmdb
+      # samples/intel holds the demo feed for the sample scenario; drop it in production.
+      INTEL_DIRS: /srv/intel:/srv/samples/intel
+      DEDUP_WINDOW: ${DEDUP_WINDOW:-15m}
+      WEBHOOK_URLS: ${WEBHOOK_URLS:-}
+      WEBHOOK_MIN_SEVERITY: ${WEBHOOK_MIN_SEVERITY:-high}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+    volumes:
+      - ./data:/srv/data:ro
+      - ./intel:/srv/intel:ro
+      - ./samples/intel:/srv/samples/intel:ro
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
@@ -32,5 +57,22 @@ services:
       timeout: 3s
       retries: 5
 
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: siem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siem-dev-only}
+      POSTGRES_DB: siem
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "siem"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   redis-data:
+  postgres-data:

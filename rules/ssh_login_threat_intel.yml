@@ -1,0 +1,12 @@
+id: ssh-login-threat-intel
+title: Successful SSH login from a known-malicious IP
+description: An SSH login succeeded from an address listed on a threat-intel feed. Requires intel feeds to be loaded (see intel/).
+severity: critical
+mitre:
+  - id: T1078
+    name: Valid Accounts
+    tactic: Initial Access
+match:
+  event.action: ssh_login
+  event.outcome: success
+  threat.listed: true

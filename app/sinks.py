@@ -1,26 +1,22 @@
-"""Where normalized events go after parsing, and where alerts are read back.
+"""Where normalized events go after parsing.
 
 With Redis, the ingest API appends events to a stream and the detection
-worker (app/worker.py) consumes them and appends alerts to a second stream.
-MemorySink runs detection inline instead -- for tests and for running the
-API without Redis.
+worker (app/worker.py) runs the pipeline. Without Redis, MemorySink runs the
+pipeline inline in the API process -- for tests and quick local runs.
 """
 
 from typing import Protocol
 
 from redis.asyncio import Redis
 
-from app.detection import Alert, DetectionEngine
+from app.pipeline import Pipeline
 from app.schema import NormalizedEvent
 
 STREAM_KEY = "siem:events"
-ALERT_STREAM_KEY = "siem:alerts"
 
 
 class EventSink(Protocol):
     async def publish(self, events: list[NormalizedEvent]) -> None: ...
-
-    async def recent_alerts(self, limit: int) -> list[Alert]: ...
 
     async def close(self) -> None: ...
 
@@ -42,10 +38,6 @@ class RedisStreamSink:
                 )
             await pipe.execute()
 
-    async def recent_alerts(self, limit: int) -> list[Alert]:
-        entries = await self._redis.xrevrange(ALERT_STREAM_KEY, count=limit)
-        return [Alert.model_validate_json(fields[b"alert"]) for _, fields in entries]
-
     async def ping(self) -> bool:
         return bool(await self._redis.ping())
 
@@ -54,19 +46,13 @@ class RedisStreamSink:
 
 
 class MemorySink:
-    def __init__(self, engine: DetectionEngine | None = None) -> None:
-        self.engine = engine
+    def __init__(self, pipeline: Pipeline) -> None:
+        self.pipeline = pipeline
         self.events: list[NormalizedEvent] = []
-        self.alerts: list[Alert] = []
 
     async def publish(self, events: list[NormalizedEvent]) -> None:
         self.events.extend(events)
-        if self.engine:
-            for event in events:
-                self.alerts.extend(self.engine.process(event))
-
-    async def recent_alerts(self, limit: int) -> list[Alert]:
-        return self.alerts[::-1][:limit]
+        await self.pipeline.handle(events)
 
     async def close(self) -> None:
         pass

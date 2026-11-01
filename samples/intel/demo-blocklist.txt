@@ -1,0 +1,5 @@
+# Demo threat-intel feed for the sample attack scenario.
+# Uses only documentation address ranges (RFC 5737), never real hosts.
+# Format: one IP or CIDR per line; '#' and ';' start comments.
+203.0.113.45      # attacker in samples/auth.log
+192.0.2.0/24      ; TEST-NET-1

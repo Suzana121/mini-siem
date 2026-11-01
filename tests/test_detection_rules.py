@@ -10,9 +10,12 @@ from pathlib import Path
 import pytest
 
 from app.detection import DEFAULT_RULES_DIR, DetectionEngine, load_rules
+from app.enrichment import Enricher, ThreatIntel
 from app.parsers.auth_log import parse_line
 
 RULES = load_rules(DEFAULT_RULES_DIR)
+KNOWN_BAD_IP = "198.51.100.66"
+ENRICHER = Enricher(intel=ThreatIntel({"test-feed": [KNOWN_BAD_IP]}))
 BASE = datetime(2026, 10, 26, 10, 0, tzinfo=timezone.utc)
 REF = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
 SAMPLE = Path(__file__).parent.parent / "samples" / "auth.log"
@@ -56,7 +59,7 @@ def fired(lines: list[str]) -> list[str]:
     for raw in lines:
         event = parse_line(raw, REF)
         assert event is not None, f"test line didn't parse: {raw}"
-        alerts.extend(engine.process(event))
+        alerts.extend(engine.process(ENRICHER.enrich(event)))
     return sorted(a.rule_id for a in alerts)
 
 
@@ -99,6 +102,9 @@ CASES = {
     # ssh-root-login
     "root logs in over ssh": ([ssh_ok(0, user="root")], ["ssh-root-login"]),
     "normal user logs in": ([ssh_ok(0, user="alice")], []),
+    # ssh-login-threat-intel
+    "login from a listed IP": ([ssh_ok(0, ip=KNOWN_BAD_IP)], ["ssh-login-threat-intel"]),
+    "failed login from a listed IP": ([ssh_fail(0, ip=KNOWN_BAD_IP)], []),
     # sudo-auth-failure
     "wrong sudo password": ([sudo_fail(0, "/usr/bin/apt update")], ["sudo-auth-failure"]),
     # sudo-credential-file-access
