@@ -1,0 +1,1158 @@
+{
+  "tool": "bench_engine",
+  "machine": {
+    "generated_at": "2026-11-01T08:23:25+00:00",
+    "commit": "18aa39f9090783c43aca409eefb29a2355ccdf49",
+    "dirty_tree": true,
+    "cpu_model": "Apple M2 Max",
+    "cpu_logical_cores": 12,
+    "cpu_physical_cores": 12,
+    "ram_bytes": 34359738368,
+    "os": "Darwin 25.6.0 (arm64)",
+    "python": "CPython 3.13.2",
+    "pydantic": "2.10.4",
+    "docker": null
+  },
+  "params": {
+    "lines": [
+      100000,
+      1000000
+    ],
+    "runs": 3,
+    "scaling_lines": null,
+    "skip_scaling": false,
+    "seed": 1,
+    "attack_ratio": 0.02,
+    "batch_size": 10000,
+    "geoip": null,
+    "no_isolate": false,
+    "out": "/Users/suzic/mini-siem/benchmarks/results/engine.json"
+  },
+  "scaling_lines": 100000,
+  "method": "one discarded warm-up pass over the first 50,000 lines, then 3 timed pass(es) with a fresh engine/store per pass; median reported; each experiment in its own subprocess",
+  "headline": [
+    {
+      "name": "100,000 lines",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 12,
+      "intel_entries": 2,
+      "intel_build_s": 0.00018283305689692497,
+      "generate_s": 0.41910591698251665,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 3.6203587912023067,
+      "total_runs_s": [
+        3.6203587912023067,
+        3.5880774998804554,
+        3.677376415929757
+      ],
+      "lines_per_s": 27621.571719081025,
+      "events_per_s": 22885.02460069301,
+      "stages": {
+        "parse": {
+          "median_s": 1.2981852922821417,
+          "runs_s": [
+            1.2981852922821417,
+            1.2826052077580243,
+            1.3409145419718698
+          ],
+          "us_per_item": 12.981852922821417,
+          "share": 0.35857918155427343
+        },
+        "enrich": {
+          "median_s": 0.30295554094482213,
+          "runs_s": [
+            0.3031602497212589,
+            0.3003482080530375,
+            0.30295554094482213
+          ],
+          "us_per_item": 3.6565869374888007,
+          "share": 0.08368108201900393
+        },
+        "detect": {
+          "median_s": 2.0030766238924116,
+          "runs_s": [
+            2.0030766238924116,
+            1.9884162509115413,
+            2.0172235410427675
+          ],
+          "us_per_item": 24.17656331642461,
+          "share": 0.5532812462565894
+        },
+        "score": {
+          "median_s": 0.0014653760008513927,
+          "runs_s": [
+            0.0014623351162299514,
+            0.001558082876726985,
+            0.0014653760008513927
+          ],
+          "us_per_item": 0.01768667021739237,
+          "share": 0.0004047598830293688,
+          "us_per_alert": 2.8960000016825944
+        },
+        "store": {
+          "median_s": 0.014817415969446301,
+          "runs_s": [
+            0.014474290190264583,
+            0.015149750281125307,
+            0.014817415969446301
+          ],
+          "us_per_item": 0.17884198292674047,
+          "share": 0.004092803178915175,
+          "us_per_alert": 29.28343076965672
+        }
+      },
+      "alerts": 506,
+      "stored_alerts": 440,
+      "rss_setup_mb": 85.015625,
+      "peak_rss_mb": 157.15625,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    },
+    {
+      "name": "1,000,000 lines",
+      "lines": 1000000,
+      "events": 829399,
+      "unparsed_lines": 170601,
+      "rules": 12,
+      "intel_entries": 2,
+      "intel_build_s": 0.00017083401326090097,
+      "generate_s": 4.515168000012636,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 42.83909408200998,
+      "total_runs_s": [
+        39.541742085595615,
+        42.83909408200998,
+        45.588573581306264
+      ],
+      "lines_per_s": 23343.164028763716,
+      "events_per_s": 19360.796902292597,
+      "stages": {
+        "parse": {
+          "median_s": 18.1703181253979,
+          "runs_s": [
+            15.553925548563711,
+            18.1703181253979,
+            20.9635129540693
+          ],
+          "us_per_item": 18.1703181253979,
+          "share": 0.4241527164559816
+        },
+        "enrich": {
+          "median_s": 3.1256469554500654,
+          "runs_s": [
+            3.053405998274684,
+            3.1256469554500654,
+            3.173773212824017
+          ],
+          "us_per_item": 3.7685685121998764,
+          "share": 0.0729624895770768
+        },
+        "detect": {
+          "median_s": 20.650008587399498,
+          "runs_s": [
+            20.196839248994365,
+            20.775140003534034,
+            20.650008587399498
+          ],
+          "us_per_item": 24.897556649332223,
+          "share": 0.4820365376510458
+        },
+        "score": {
+          "median_s": 0.016568628954701126,
+          "runs_s": [
+            0.015568669652566314,
+            0.016568628954701126,
+            0.016913783620111644
+          ],
+          "us_per_item": 0.019976668593404533,
+          "share": 0.0003867642234213123,
+          "us_per_alert": 3.2354284231011765
+        },
+        "store": {
+          "median_s": 0.7514203686732799,
+          "runs_s": [
+            0.7220026201102883,
+            0.7514203686732799,
+            0.7843650433933362
+          ],
+          "us_per_item": 0.9059817635098184,
+          "share": 0.01754052892049448,
+          "us_per_alert": 146.73313194166764
+        }
+      },
+      "alerts": 5121,
+      "stored_alerts": 4484,
+      "rss_setup_mb": 334.875,
+      "peak_rss_mb": 495.578125,
+      "correctness": {
+        "injected": 5121,
+        "detected": 5121,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "sudo-auth-failure": {
+            "injected": 394,
+            "detected": 394
+          },
+          "sudo-credential-file-access": {
+            "injected": 394,
+            "detected": 394
+          },
+          "sudo-root-shell": {
+            "injected": 394,
+            "detected": 394
+          },
+          "ssh-brute-force": {
+            "injected": 788,
+            "detected": 788
+          },
+          "local-account-created": {
+            "injected": 394,
+            "detected": 394
+          },
+          "privileged-group-change": {
+            "injected": 788,
+            "detected": 788
+          },
+          "backdoor-account": {
+            "injected": 394,
+            "detected": 394
+          },
+          "ssh-scanner": {
+            "injected": 393,
+            "detected": 393
+          },
+          "ssh-brute-force-success": {
+            "injected": 394,
+            "detected": 394
+          },
+          "ssh-root-login": {
+            "injected": 394,
+            "detected": 394
+          },
+          "ssh-password-spraying": {
+            "injected": 394,
+            "detected": 394
+          }
+        }
+      }
+    }
+  ],
+  "rules_scaling": [
+    {
+      "name": "1 rules",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 1,
+      "intel_entries": 2,
+      "intel_build_s": 0.00022358400747179985,
+      "generate_s": 0.47386974992696196,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 2.1380096641369164,
+      "total_runs_s": [
+        2.1380096641369164,
+        2.124535875278525,
+        2.1452196690952405
+      ],
+      "lines_per_s": 46772.47333227961,
+      "events_per_s": 38751.9296052603,
+      "stages": {
+        "parse": {
+          "median_s": 1.3710182089125738,
+          "runs_s": [
+            1.3710182089125738,
+            1.3557990409899503,
+            1.3712081679841504
+          ],
+          "us_per_item": 13.710182089125738,
+          "share": 0.641259126144331
+        },
+        "enrich": {
+          "median_s": 0.3082714161137119,
+          "runs_s": [
+            0.30583003908395767,
+            0.3082714161137119,
+            0.31214341695886105
+          ],
+          "us_per_item": 3.7207480340089787,
+          "share": 0.1441861658928266
+        },
+        "detect": {
+          "median_s": 0.4579424591502175,
+          "runs_s": [
+            0.4579424591502175,
+            0.45724691811483353,
+            0.4586559161543846
+          ],
+          "us_per_item": 5.527234818112024,
+          "share": 0.2141910145832209
+        },
+        "score": {
+          "median_s": 0.0003738339291885495,
+          "runs_s": [
+            0.00040329108014702797,
+            0.000363208819180727,
+            0.0003738339291885495
+          ],
+          "us_per_item": 0.004512068859997943,
+          "share": 0.00017485137483672734,
+          "us_per_alert": 4.792742681904481
+        },
+        "store": {
+          "median_s": 0.0028383340686559677,
+          "runs_s": [
+            0.0028156659100204706,
+            0.002855291240848601,
+            0.0028383340686559677
+          ],
+          "us_per_item": 0.034257882352338724,
+          "share": 0.0013275590453431193,
+          "us_per_alert": 36.38889831610215
+        }
+      },
+      "alerts": 78,
+      "stored_alerts": 78,
+      "rss_setup_mb": 86.03125,
+      "peak_rss_mb": 151.8125,
+      "correctness": {
+        "injected": 78,
+        "detected": 78,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          }
+        }
+      }
+    },
+    {
+      "name": "6 rules",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 6,
+      "intel_entries": 2,
+      "intel_build_s": 0.0001710839569568634,
+      "generate_s": 0.4396582079352811,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 2.8826350001618266,
+      "total_runs_s": [
+        2.874968707212247,
+        2.8892498747445643,
+        2.8826350001618266
+      ],
+      "lines_per_s": 34690.48283753793,
+      "events_per_s": 28741.758840556926,
+      "stages": {
+        "parse": {
+          "median_s": 1.359428039751947,
+          "runs_s": [
+            1.3453464169288054,
+            1.359428039751947,
+            1.3620025841519237
+          ],
+          "us_per_item": 13.59428039751947,
+          "share": 0.4715921508188275
+        },
+        "enrich": {
+          "median_s": 0.30980612675193697,
+          "runs_s": [
+            0.31075058109126985,
+            0.30980612675193697,
+            0.3047149999765679
+          ],
+          "us_per_item": 3.739271553516354,
+          "share": 0.10747324123052171
+        },
+        "detect": {
+          "median_s": 1.2104771258309484,
+          "runs_s": [
+            1.2104771258309484,
+            1.211183958221227,
+            1.2078897920437157
+          ],
+          "us_per_item": 14.6101135256958,
+          "share": 0.4199203595887076
+        },
+        "score": {
+          "median_s": 0.0009500421583652496,
+          "runs_s": [
+            0.0009500421583652496,
+            0.0010062932269647717,
+            0.0009400820126757026
+          ],
+          "us_per_item": 0.011466737777787495,
+          "share": 0.00032957421189707184,
+          "us_per_alert": 3.492802052813418
+        },
+        "store": {
+          "median_s": 0.00744454120285809,
+          "runs_s": [
+            0.00744454120285809,
+            0.007825456792488694,
+            0.007087541976943612
+          ],
+          "us_per_item": 0.08985348818203652,
+          "share": 0.0025825472883109256,
+          "us_per_alert": 27.369636775213568
+        }
+      },
+      "alerts": 272,
+      "stored_alerts": 263,
+      "rss_setup_mb": 85.140625,
+      "peak_rss_mb": 153.875,
+      "correctness": {
+        "injected": 272,
+        "detected": 272,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    },
+    {
+      "name": "12 rules",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 12,
+      "intel_entries": 2,
+      "intel_build_s": 0.00019308296032249928,
+      "generate_s": 0.44507783406879753,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 3.7164325419580564,
+      "total_runs_s": [
+        3.713345414842479,
+        3.7164325419580564,
+        3.8554101241752505
+      ],
+      "lines_per_s": 26907.52458735967,
+      "events_per_s": 22293.422271119234,
+      "stages": {
+        "parse": {
+          "median_s": 1.3478412090335041,
+          "runs_s": [
+            1.346203456982039,
+            1.3478412090335041,
+            1.403557749115862
+          ],
+          "us_per_item": 13.478412090335041,
+          "share": 0.36267070471925594
+        },
+        "enrich": {
+          "median_s": 0.30920779099687934,
+          "runs_s": [
+            0.30920779099687934,
+            0.30796483100857586,
+            0.31559995794668794
+          ],
+          "us_per_item": 3.732049811674786,
+          "share": 0.083200162388517
+        },
+        "detect": {
+          "median_s": 2.043636209098622,
+          "runs_s": [
+            2.04078862501774,
+            2.043636209098622,
+            2.117576708085835
+          ],
+          "us_per_item": 24.66610593707602,
+          "share": 0.5498919154393969
+        },
+        "score": {
+          "median_s": 0.0016248337924480438,
+          "runs_s": [
+            0.0016248337924480438,
+            0.0015720430528745055,
+            0.0016938738990575075
+          ],
+          "us_per_item": 0.019611280264182445,
+          "share": 0.00043720255220668596,
+          "us_per_alert": 3.211133977170047
+        },
+        "store": {
+          "median_s": 0.0155207080533728,
+          "runs_s": [
+            0.0155207080533728,
+            0.015418249764479697,
+            0.016981835127808154
+          ],
+          "us_per_item": 0.18733051771077103,
+          "share": 0.004176238335593599,
+          "us_per_alert": 30.67333607385929
+        }
+      },
+      "alerts": 506,
+      "stored_alerts": 440,
+      "rss_setup_mb": 85.703125,
+      "peak_rss_mb": 157.546875,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    },
+    {
+      "name": "48 rules",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 48,
+      "intel_entries": 2,
+      "intel_build_s": 0.00020270806271582842,
+      "generate_s": 0.43937524990178645,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 8.833870876114815,
+      "total_runs_s": [
+        8.820588706992567,
+        8.833870876114815,
+        8.93638233304955
+      ],
+      "lines_per_s": 11320.065846828467,
+      "events_per_s": 9378.900955414323,
+      "stages": {
+        "parse": {
+          "median_s": 1.3782258329447359,
+          "runs_s": [
+            1.3185052080079913,
+            1.3782258329447359,
+            1.4211113749770448
+          ],
+          "us_per_item": 13.782258329447359,
+          "share": 0.15601607180734423
+        },
+        "enrich": {
+          "median_s": 0.310746039962396,
+          "runs_s": [
+            0.3124398337677121,
+            0.30980366806034,
+            0.310746039962396
+          ],
+          "us_per_item": 3.750616037782987,
+          "share": 0.035176656340155134
+        },
+        "detect": {
+          "median_s": 7.0600158732850105,
+          "runs_s": [
+            7.0600158732850105,
+            7.018522000988014,
+            7.0755529180169106
+          ],
+          "us_per_item": 85.21237716995378,
+          "share": 0.799198445652405
+        },
+        "score": {
+          "median_s": 0.0053345413180068135,
+          "runs_s": [
+            0.0055203348165377975,
+            0.0053345413180068135,
+            0.005282667116262019
+          ],
+          "us_per_item": 0.06438639161404448,
+          "share": 0.0006038735898246425,
+          "us_per_alert": 2.635642943679256
+        },
+        "store": {
+          "median_s": 0.1236893329769373,
+          "runs_s": [
+            0.1241074571153149,
+            0.12198483280371875,
+            0.1236893329769373
+          ],
+          "us_per_item": 1.4928949569948498,
+          "share": 0.01400171393849222,
+          "us_per_alert": 61.11133052220222
+        }
+      },
+      "alerts": 2024,
+      "stored_alerts": 1760,
+      "rss_setup_mb": 86.375,
+      "peak_rss_mb": 179.234375,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    }
+  ],
+  "intel_scaling": [
+    {
+      "name": "intel 100",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 12,
+      "intel_entries": 102,
+      "intel_build_s": 0.0006082089385017753,
+      "generate_s": 0.43784770800266415,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 3.769997500232421,
+      "total_runs_s": [
+        3.7776875832350925,
+        3.6787552499445155,
+        3.769997500232421
+      ],
+      "lines_per_s": 26525.21652702289,
+      "events_per_s": 21976.672396969007,
+      "stages": {
+        "parse": {
+          "median_s": 1.4118455412099138,
+          "runs_s": [
+            1.4165170838823542,
+            1.3408585819415748,
+            1.4118455412099138
+          ],
+          "us_per_item": 14.118455412099138,
+          "share": 0.37449508683304783
+        },
+        "enrich": {
+          "median_s": 0.31440374988596886,
+          "runs_s": [
+            0.31854345893952996,
+            0.313994625932537,
+            0.31440374988596886
+          ],
+          "us_per_item": 3.794763552913253,
+          "share": 0.08339627542633272
+        },
+        "detect": {
+          "median_s": 2.0254400824196637,
+          "runs_s": [
+            2.0254400824196637,
+            2.0073298340430483,
+            2.0264955399325117
+          ],
+          "us_per_item": 24.44648387992642,
+          "share": 0.5372523674869267
+        },
+        "score": {
+          "median_s": 0.0015921681188046932,
+          "runs_s": [
+            0.0015622508944943547,
+            0.0015969988889992237,
+            0.0015921681188046932
+          ],
+          "us_per_item": 0.01921701490374032,
+          "share": 0.000422326040987172,
+          "us_per_alert": 3.146577309890698
+        },
+        "store": {
+          "median_s": 0.015624707099050283,
+          "runs_s": [
+            0.015624707099050283,
+            0.01497520913835615,
+            0.015660501085221767
+          ],
+          "us_per_item": 0.18858575651825282,
+          "share": 0.004144487389736205,
+          "us_per_alert": 30.878867784684353
+        }
+      },
+      "alerts": 506,
+      "stored_alerts": 440,
+      "rss_setup_mb": 86.5,
+      "peak_rss_mb": 158.296875,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    },
+    {
+      "name": "intel 10,000",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 12,
+      "intel_entries": 10002,
+      "intel_build_s": 0.03695016691926867,
+      "generate_s": 0.43920466594863683,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 3.797080875840038,
+      "total_runs_s": [
+        3.772054082946852,
+        3.797080875840038,
+        3.830826250021346
+      ],
+      "lines_per_s": 26336.020556285028,
+      "events_per_s": 21819.91975129327,
+      "stages": {
+        "parse": {
+          "median_s": 1.3968267490854487,
+          "runs_s": [
+            1.3968267490854487,
+            1.3980990407289937,
+            1.3922714178916067
+          ],
+          "us_per_item": 13.968267490854487,
+          "share": 0.36786857977483167
+        },
+        "enrich": {
+          "median_s": 0.3211711250478402,
+          "runs_s": [
+            0.3211711250478402,
+            0.3230377940926701,
+            0.318294249009341
+          ],
+          "us_per_item": 3.8764438401950483,
+          "share": 0.08458369351345107
+        },
+        "detect": {
+          "median_s": 2.0555787479970604,
+          "runs_s": [
+            2.0358619169564918,
+            2.0555787479970604,
+            2.1026029160711914
+          ],
+          "us_per_item": 24.81024897403877,
+          "share": 0.5413576416231323
+        },
+        "score": {
+          "median_s": 0.0016630820464342833,
+          "runs_s": [
+            0.0018441679421812296,
+            0.0016512928996235132,
+            0.0016630820464342833
+          ],
+          "us_per_item": 0.020072925776496445,
+          "share": 0.00043798962961681854,
+          "us_per_alert": 3.286723411925461
+        },
+        "store": {
+          "median_s": 0.01635012391488999,
+          "runs_s": [
+            0.01635012391488999,
+            0.018714000121690333,
+            0.01599458500277251
+          ],
+          "us_per_item": 0.1973413305036691,
+          "share": 0.0043059719952035025,
+          "us_per_alert": 32.31249785551382
+        }
+      },
+      "alerts": 506,
+      "stored_alerts": 440,
+      "rss_setup_mb": 85.265625,
+      "peak_rss_mb": 159.65625,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    },
+    {
+      "name": "intel 1,000,000",
+      "lines": 100000,
+      "events": 82852,
+      "unparsed_lines": 17148,
+      "rules": 12,
+      "intel_entries": 1000002,
+      "intel_build_s": 4.475834375014529,
+      "generate_s": 0.4316327910637483,
+      "runs": 3,
+      "warmup_lines": 50000,
+      "median_total_s": 4.588404540787451,
+      "total_runs_s": [
+        4.590538999997079,
+        4.588404540787451,
+        4.573667583987117
+      ],
+      "lines_per_s": 21794.067875026172,
+      "events_per_s": 18056.821115816685,
+      "stages": {
+        "parse": {
+          "median_s": 2.1869026250205934,
+          "runs_s": [
+            2.220294999075122,
+            2.175286249956116,
+            2.1869026250205934
+          ],
+          "us_per_item": 21.869026250205934,
+          "share": 0.47661504245771724
+        },
+        "enrich": {
+          "median_s": 0.3219664180651307,
+          "runs_s": [
+            0.3176109177293256,
+            0.3496519598411396,
+            0.3219664180651307
+          ],
+          "us_per_item": 3.886042799994336,
+          "share": 0.07016957968790512
+        },
+        "detect": {
+          "median_s": 2.0423617069609463,
+          "runs_s": [
+            2.0361370412865654,
+            2.0423617069609463,
+            2.044989541871473
+          ],
+          "us_per_item": 24.650723059925486,
+          "share": 0.4451136966686118
+        },
+        "score": {
+          "median_s": 0.0015585841611027718,
+          "runs_s": [
+            0.001552873756736517,
+            0.0015585841611027718,
+            0.0015613320283591747
+          ],
+          "us_per_item": 0.018811666116723455,
+          "share": 0.00033967888996014534,
+          "us_per_alert": 3.0802058519817623
+        },
+        "store": {
+          "median_s": 0.01824766700156033,
+          "runs_s": [
+            0.014943168149329722,
+            0.01954603986814618,
+            0.01824766700156033
+          ],
+          "us_per_item": 0.22024413413750218,
+          "share": 0.003976908931928811,
+          "us_per_alert": 36.062583007036224
+        }
+      },
+      "alerts": 506,
+      "stored_alerts": 440,
+      "rss_setup_mb": 384.125,
+      "peak_rss_mb": 454.671875,
+      "correctness": {
+        "injected": 506,
+        "detected": 506,
+        "recall": 1.0,
+        "extra_alerts": 0,
+        "extra_by_rule": {},
+        "per_rule": {
+          "ssh-brute-force": {
+            "injected": 78,
+            "detected": 78
+          },
+          "ssh-brute-force-success": {
+            "injected": 39,
+            "detected": 39
+          },
+          "local-account-created": {
+            "injected": 39,
+            "detected": 39
+          },
+          "privileged-group-change": {
+            "injected": 78,
+            "detected": 78
+          },
+          "backdoor-account": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-auth-failure": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-credential-file-access": {
+            "injected": 39,
+            "detected": 39
+          },
+          "sudo-root-shell": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-root-login": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-password-spraying": {
+            "injected": 39,
+            "detected": 39
+          },
+          "ssh-scanner": {
+            "injected": 38,
+            "detected": 38
+          }
+        }
+      }
+    }
+  ]
+}

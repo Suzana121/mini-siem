@@ -271,11 +271,23 @@ async def alert_events(
     return matched[:limit]
 
 
+MAX_STATS_ALERTS = 100_000
+
+
 async def fetch_alerts(store, since: datetime | None = None) -> list[StoredAlert]:
-    """All alerts (up to the store's list cap) seen since `since`, via store.list only."""
-    alerts = await store.list(limit=MAX_LIMIT)
+    """Alerts last seen since `since` (all of them if None), paged through store.list.
+
+    Capped at MAX_STATS_ALERTS so a huge history can't exhaust memory; the cap
+    keeps the newest alerts.
+    """
     since = _utc(since)
-    return [a for a in alerts if since is None or _utc(a.last_seen) >= since]
+    alerts: list[StoredAlert] = []
+    while len(alerts) < MAX_STATS_ALERTS:
+        page = await store.list(limit=MAX_LIMIT, since=since, offset=len(alerts))
+        alerts.extend(page)
+        if len(page) < MAX_LIMIT:
+            break
+    return alerts
 
 
 def _top(counts: dict[str, int], extra: dict[str, int] | None = None, key: str = "ip") -> list[dict]:
