@@ -1,0 +1,98 @@
+# Attack lab overlay. Start with:
+#   ADMIN_PASSWORD=... docker compose -f docker-compose.yml -f docker-compose.lab.yml --profile lab up -d --build
+# See lab/README.md for the full flow, scenario list and lab network layout.
+#
+# victim + attacker sit on an internal-only network (lab-net) with no route
+# to the internet or to the rest of the stack. shipper and lab-init talk to
+# `api` over the stack's normal (default) network, and read the victim's
+# auth.log through a shared volume -- not over the network -- so `api`
+# itself needs no change.
+
+services:
+  # Short dedup window so each scenario's alerts aren't hidden behind the
+  # previous scenario's still-open alert of the same rule (simpler than
+  # having the runner close alerts between scenarios).
+  detector:
+    environment:
+      DEDUP_WINDOW: 1s
+
+  victim:
+    build:
+      context: ./lab/victim
+      args:
+        DEPLOY_PASSWORD: ${DEPLOY_PASSWORD:-x7Qm2vR9pL4kT8sN1wZ6bF3cJ5hY0dG}
+        INTERN_PASSWORD: ${INTERN_PASSWORD:-password123}
+        ROOT_PASSWORD: ${ROOT_PASSWORD:-toor}
+    hostname: victim01
+    profiles: [lab]
+    networks: [lab-net]
+    volumes:
+      - lab-logs:/var/log
+    tmpfs:
+      - /run
+
+  attacker:
+    build:
+      context: ./lab
+      dockerfile: attacker/Dockerfile
+    profiles: [lab]
+    networks: [lab-net]
+    depends_on:
+      - victim
+    environment:
+      VICTIM_HOST: victim
+      INTERN_PASSWORD: ${INTERN_PASSWORD:-password123}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:-toor}
+
+  lab-init:
+    build: .
+    profiles: [lab]
+    networks: [default]
+    user: root  # only container that needs to write to the shared /shared volume
+    volumes:
+      - ./scripts:/srv/scripts:ro
+      - lab-shared:/shared
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      - api
+    command:
+      - python
+      - -m
+      - scripts.create_api_key
+      - lab-shipper
+      - --url
+      - http://api:8000
+      - --out
+      - /shared/api-key
+
+  shipper:
+    build: .
+    profiles: [lab]
+    networks: [default]
+    volumes:
+      - ./scripts:/srv/scripts:ro
+      - lab-logs:/lab-logs:ro
+      - lab-shared:/shared:ro
+    depends_on:
+      victim:
+        condition: service_started
+      lab-init:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        while [ ! -s /shared/api-key ]; do sleep 1; done
+        exec python -m scripts.ship_logs /lab-logs/auth.log --follow \
+          --url http://api:8000 --api-key "$(cat /shared/api-key)"
+    restart: unless-stopped
+
+networks:
+  lab-net:
+    internal: true
+
+volumes:
+  lab-logs:
+  lab-shared:

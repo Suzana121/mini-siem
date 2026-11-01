@@ -92,6 +92,18 @@ def _ssh_invalid_user(m: re.Match[str]) -> dict:
     }
 
 
+@_rule("sshd", r"^Connection (?:closed|reset) by (?P<ip>[0-9a-fA-F.:]+) port (?P<port>\d+)\s*$")
+def _ssh_dropped_before_banner(m: re.Match[str]) -> dict:
+    # OpenSSH 9.x no longer logs "Did not receive identification string" for a
+    # client that connects and hangs up; it logs the kex_exchange_identification
+    # error (no address) followed by this line. With no user and no [preauth]
+    # marker it is the same signal for port scanners.
+    return {
+        "event": EventInfo(category="network", action="ssh_no_identification"),
+        "source": SourceInfo(ip=m["ip"], port=_port(m["port"])),
+    }
+
+
 @_rule(
     "sshd",
     r"^(?:Connection closed|Disconnected from) (?:by )?"

@@ -1,0 +1,31 @@
+# Maps each lab scenario to its script (run inside the `attacker`
+# container, path relative to /lab/scenarios) and the rule ids it is
+# expected to trigger. Read by lab/run_lab.py.
+scenarios:
+  - name: brute-force
+    script: brute-force.sh
+    expected_rules: [ssh-brute-force]
+  - name: spraying
+    script: spraying.sh
+    expected_rules: [ssh-password-spraying]
+    allowed_rules: [ssh-brute-force]  # many failures from one IP also trip the plain brute-force rule
+  - name: brute-force-success
+    script: brute-force-success.sh
+    expected_rules: [ssh-brute-force, ssh-brute-force-success]
+    allowed_rules: [ssh-password-spraying]  # the guesses span several usernames
+  - name: scanner
+    script: scanner.sh
+    expected_rules: [ssh-scanner]
+  - name: root-login
+    script: root-login.sh
+    expected_rules: [ssh-root-login]
+  - name: privesc
+    script: privesc.sh
+    expected_rules: [sudo-auth-failure, sudo-credential-file-access, sudo-root-shell]
+  - name: persistence
+    script: persistence.sh
+    expected_rules: [local-account-created, privileged-group-change, backdoor-account]
+    allowed_rules: [ssh-root-login]  # the attacker logs in as root over SSH to make the changes
+  - name: benign-noise
+    script: benign-noise.sh
+    expected_rules: []

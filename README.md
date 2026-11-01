@@ -2,7 +2,7 @@
 
 A lightweight Security Information and Event Management pipeline: ingest raw logs, normalize them to a common schema, run detection rules mapped to MITRE ATT&CK, and surface alerts.
 
-> **Status:** Stage 4 of 5 — React dashboard (alert triage, raw-event drill-down, ATT&CK heatmap) with user accounts and roles, on top of enrichment, risk scoring, deduplicated alert storage and signed webhooks.
+> **Status:** Stage 5 of 5 — attack lab and benchmarks, on top of stage 4: React dashboard (alert triage, raw-event drill-down, ATT&CK heatmap) with user accounts and roles, on top of enrichment, risk scoring, deduplicated alert storage and signed webhooks.
 
 ## Architecture
 
@@ -85,6 +85,41 @@ The dashboard (React + TypeScript, source in [`web/`](web)) is served at `/` by 
 - **Log shippers** authenticate with an API key (Admin page): `python scripts/ship_logs.py samples/auth.log --api-key msk_...` or `SIEM_API_KEY`.
 - **Frontend development:** `cd web && npm ci && npm run dev` (proxies to the API on :8000); `npm test`, `npm run build`.
 
+## Attack lab
+
+[`lab/`](lab) runs real attacks against a real sshd and checks that the SIEM catches them. Everything lives in docker compose: a `victim` (OpenSSH, rsyslog, sudo), an `attacker` (hydra, nmap, ssh clients) on an isolated `internal` network with no route out, and a `shipper` that tails the victim's `auth.log` into `/ingest`.
+
+```bash
+ADMIN_PASSWORD='choose-a-long-passphrase' docker compose -f docker-compose.yml -f docker-compose.lab.yml --profile lab up -d --build
+python lab/run_lab.py --admin-username admin --admin-password 'choose-a-long-passphrase'
+```
+
+Eight scenarios (brute force, password spraying, brute force then success, scanning, root login, privilege escalation, persistence, benign noise) run in turn; the runner reports whether each expected rule fired, how long it took (attack start to alert visible), and any unexpected alerts. It exits non-zero if an expected rule is missed, so it works as a regression test. Results: [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md). Details: [`lab/README.md`](lab/README.md).
+
+Running it against real OpenSSH 9.2 found a parser gap: scanners that hang up before sending a banner are logged as `Connection closed by <ip> port <n>` rather than the older "Did not receive identification string", so `ssh-scanner` never fired on real traffic until the parser learned the newer wording.
+
+## Performance
+
+Measured by [`benchmarks/`](benchmarks) (offline engine benchmark, end-to-end stack benchmark, reproducible with seeded log generation). Full tables, hardware and method are in [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md); regenerate with `python -m benchmarks.bench_engine` and `python -m benchmarks.report`.
+
+Apple M2 Max, Docker Desktop (12 CPUs), single detector worker, 12 rules:
+
+| What | Result |
+|---|---|
+| Detection engine, offline (parse → enrich → detect → score → store) | ~27.6k lines/s at 100k lines, ~23.3k lines/s at 1M lines (peak 496 MB); 100% of injected attacks found, 0 extra alerts |
+| Where the time goes | parse ~13 µs, enrich ~4 µs, detect ~24 µs per event (detect grows linearly with rule count: 5.5 µs with 1 rule, 85 µs with 48) |
+| Threat-intel size | lookup cost is flat up to 10⁶ entries; a 10⁶-entry feed costs ~300 MB of memory |
+| `POST /ingest` (accepted = parsed and queued) | ~35-44k lines/s with 4 clients |
+| Full pipeline through Redis → detector → PostgreSQL | ~7.2k lines/s sustained (100k-line backlog processed in 14 s) |
+| Ingest → alert visible (p50 / p95 / p99) | 90 / 98 / 102 ms for attack bursts under 200 lines/s of background traffic, on a database already holding 10k alerts |
+| Dashboard API at ~10k alerts | `/alerts` p50 8.5 ms (50 rows), `/stats/summary` and `/stats/attack` p50 ~350-375 ms |
+
+The lab's time-to-detect is measured from the attack's start to the alert appearing, at about one second of resolution because syslog timestamps are whole seconds.
+
+Known limit: `/stats/*` read every alert (capped at 100k) and aggregate in Python, so their cost grows linearly with history; moving the aggregation into SQL is the obvious next optimization.
+
+Detection cost grows linearly with the number of rules, so the engine is single-worker by design (see Design notes).
+
 ## Supported sources
 
 | Source | Events extracted |
@@ -162,6 +197,6 @@ TEST_DATABASE_URL=postgresql://siem:siem-dev-only@localhost:5432/siem_test .venv
 2. ✅ Detection engine — YAML rules, thresholds, sequences, MITRE ATT&CK mapping
 3. ✅ Enrichment & alerting — GeoIP, threat-intel feeds, severity scoring, dedup, webhooks, alert storage in PostgreSQL
 4. ✅ Dashboard — alert triage, raw-event drill-down, ATT&CK heatmap, login with roles
-5. Attack lab & benchmarks — scripted attacks against a local lab VM, throughput/latency numbers
+5. ✅ Attack lab & benchmarks — scripted attacks against a local lab in docker compose, throughput/latency numbers
 
 More parsers (nginx access, Windows EVTX) are planned.

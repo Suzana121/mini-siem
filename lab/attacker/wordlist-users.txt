@@ -1,0 +1,8 @@
+deploy
+intern
+admin
+backup
+oracle
+postgres
+ubuntu
+test
