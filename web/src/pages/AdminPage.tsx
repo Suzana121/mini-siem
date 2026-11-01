@@ -6,12 +6,70 @@ import { ErrorNote, formatTime } from "../components/ui";
 
 const ROLES: Role[] = ["viewer", "analyst", "admin"];
 
+function PasswordReset({
+  username,
+  pending,
+  onSubmit,
+}: {
+  username: string;
+  pending: boolean;
+  onSubmit: (password: string, done: () => void) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  if (!open) {
+    return (
+      <>
+        <button type="button" onClick={() => { setOpen(true); setSaved(false); }}>
+          Reset password <span className="sr-only">{username}</span>
+        </button>
+        {saved && <span role="status"> Password updated; their sessions were signed out.</span>}
+      </>
+    );
+  }
+  return (
+    <form
+      aria-label={`Reset password for ${username}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(password, () => {
+          setPassword("");
+          setOpen(false);
+          setSaved(true);
+        });
+      }}
+    >
+      <label>
+        <span className="sr-only">New password for {username} (min 12 characters)</span>
+        <input
+          type="password"
+          value={password}
+          minLength={12}
+          required
+          autoComplete="new-password"
+          placeholder="New password (12+ characters)"
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </label>{" "}
+      <button type="submit" className="primary" disabled={pending}>
+        Set password
+      </button>{" "}
+      <button type="button" onClick={() => { setPassword(""); setOpen(false); }}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 function Users() {
   const qc = useQueryClient();
   const users = useQuery({ queryKey: ["users"], queryFn: api.users });
   const refresh = () => qc.invalidateQueries({ queryKey: ["users"] });
   const update = useMutation({
-    mutationFn: ({ id, ...changes }: { id: string; role?: Role; disabled?: boolean }) => api.updateUser(id, changes),
+    mutationFn: ({ id, ...changes }: { id: string; role?: Role; disabled?: boolean; password?: string }) =>
+      api.updateUser(id, changes),
     onSuccess: refresh,
   });
   const create = useMutation({ mutationFn: api.createUser, onSuccess: refresh });
@@ -21,6 +79,7 @@ function Users() {
 
   function onCreate(e: FormEvent) {
     e.preventDefault();
+    update.reset();
     create.mutate(
       { username: username.trim().toLowerCase(), password, role },
       {
@@ -35,7 +94,8 @@ function Users() {
   return (
     <section aria-labelledby="users-h">
       <h2 id="users-h">Users</h2>
-      <ErrorNote error={users.error ?? update.error} />
+      <ErrorNote error={users.error} />
+      <ErrorNote error={update.error} onDismiss={() => update.reset()} />
       <div className="table-wrap">
         <table>
           <caption className="sr-only">Users</caption>
@@ -45,6 +105,7 @@ function Users() {
               <th scope="col">Role</th>
               <th scope="col">Status</th>
               <th scope="col">Created</th>
+              <th scope="col">Password</th>
             </tr>
           </thead>
           <tbody>
@@ -69,6 +130,13 @@ function Users() {
                   {u.disabled ? "disabled" : "active"}
                 </td>
                 <td>{formatTime(u.created_at)}</td>
+                <td>
+                  <PasswordReset
+                    username={u.username}
+                    pending={update.isPending}
+                    onSubmit={(password, done) => update.mutate({ id: u.id, password }, { onSuccess: done })}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -102,7 +170,7 @@ function Users() {
           Create user
         </button>
       </form>
-      <ErrorNote error={create.error} />
+      <ErrorNote error={create.error} onDismiss={() => create.reset()} />
     </section>
   );
 }
