@@ -7,6 +7,7 @@ and running without a database.
 """
 
 import asyncio
+import hashlib
 import ipaddress
 import logging
 import re
@@ -97,12 +98,32 @@ def _same_ip(a: str | None, b: str) -> bool:
         return a == b
 
 
+def fingerprint(event: NormalizedEvent) -> str:
+    """Identity of a log line, so re-shipping the same line doesn't store it twice.
+
+    Two genuinely distinct lines with the same host, second and text collapse
+    into one; real auth.log lines carry pids and ports, so this is rare.
+    """
+    payload = "\x1f".join(
+        (event.log_source, event.host.name or "", _utc(event.timestamp).isoformat(), event.raw)
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:32]
+
+
 class MemoryEventStore:
     def __init__(self, max_events: int = DEFAULT_MEMORY_LIMIT):
         self._events: deque[NormalizedEvent] = deque(maxlen=max_events)
+        self._seen: set[str] = set()
 
     async def add(self, events: list[NormalizedEvent]) -> None:
-        self._events.extend(events)
+        for event in events:
+            key = fingerprint(event)
+            if key in self._seen:
+                continue
+            if self._events.maxlen is not None and len(self._events) == self._events.maxlen:
+                self._seen.discard(fingerprint(self._events[0]))
+            self._events.append(event)
+            self._seen.add(key)
 
     async def query(
         self, *, source_ip=None, user=None, host=None, since=None, until=None, limit=100, offset=0
@@ -125,6 +146,7 @@ class MemoryEventStore:
         kept = [e for e in self._events if _utc(e.timestamp) >= older_than]
         removed = len(self._events) - len(kept)
         self._events = deque(kept, maxlen=self._events.maxlen)
+        self._seen = {fingerprint(e) for e in kept}
         return removed
 
     async def close(self) -> None:
@@ -142,6 +164,9 @@ CREATE TABLE IF NOT EXISTS events (
     outcome     TEXT NOT NULL,
     body        JSONB NOT NULL  -- the full NormalizedEvent document
 );
+-- Added after the first release; rows from before it have no fingerprint (NULLs never collide).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS fingerprint TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS events_fingerprint ON events (fingerprint);
 CREATE INDEX IF NOT EXISTS events_source_ip_ts ON events (source_ip, ts);
 CREATE INDEX IF NOT EXISTS events_host_ts ON events (host, ts);
 CREATE INDEX IF NOT EXISTS events_ts ON events (ts);
@@ -179,12 +204,13 @@ class PostgresEventStore:
                 e.event.action,
                 e.event.outcome.value,
                 e.model_dump_json(),
+                fingerprint(e),
             )
             for e in events
         ]
         await self._pool.executemany(
-            "INSERT INTO events (ts, host, source_ip, user_name, action, outcome, body) "
-            "VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)",
+            "INSERT INTO events (ts, host, source_ip, user_name, action, outcome, body, fingerprint) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8) ON CONFLICT (fingerprint) DO NOTHING",
             rows,
         )
 

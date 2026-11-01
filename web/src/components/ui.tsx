@@ -26,11 +26,19 @@ export function formatTime(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-export function ErrorNote({ error }: { error: unknown }) {
+export function ErrorNote({ error, onDismiss }: { error: unknown; onDismiss?: () => void }) {
   if (!error) return null;
   return (
     <p role="alert" className="error">
       {error instanceof Error ? error.message : "Something went wrong"}
+      {onDismiss && (
+        <>
+          {" "}
+          <button type="button" onClick={onDismiss}>
+            Dismiss
+          </button>
+        </>
+      )}
     </p>
   );
 }

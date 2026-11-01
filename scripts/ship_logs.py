@@ -9,7 +9,10 @@ seconds, whichever comes first) and POSTed to /ingest. Handles log rotation
 (the file being replaced or truncated) and a partial last line that hasn't
 been flushed by the writer yet. A failed POST is retried with backoff and
 the batch is never dropped, so lines are never lost on retry -- only
-re-sent, which the API tolerates (re-ingesting the same line is harmless).
+re-sent (the event store ignores exact duplicates, and alert dedup merges
+repeats). Errors that retrying cannot fix -- a rejected or revoked API key,
+an unknown source, a malformed batch -- stop the shipper with a clear message
+instead of retrying forever.
 """
 
 import argparse
@@ -24,6 +27,21 @@ FOLLOW_BATCH_SIZE = 500
 FOLLOW_BATCH_SECONDS = 1.0
 POLL_INTERVAL = 0.2
 MAX_BACKOFF = 30.0
+# 4xx responses that can succeed on a later attempt; every other 4xx is permanent.
+RETRYABLE_4XX = {408, 425, 429}
+
+
+class IngestRejected(Exception):
+    """The server refused the batch for a reason a retry cannot change."""
+
+
+def _rejection_message(e: urllib.error.HTTPError) -> str:
+    try:
+        detail = json.load(e).get("detail", "")
+    except (ValueError, AttributeError):
+        detail = ""
+    hint = " (check --api-key / SIEM_API_KEY)" if e.code in (401, 403) else ""
+    return f"server rejected the batch with HTTP {e.code}{': ' + str(detail) if detail else ''}{hint}; not retrying"
 
 
 def _headers(api_key: str | None) -> dict:
@@ -39,16 +57,24 @@ def send_batch(lines: list[str], source: str, url: str, api_key: str | None) -> 
 
 
 def send_with_retry(lines: list[str], source: str, url: str, api_key: str | None, sleep=time.sleep) -> dict:
-    """Send a batch, retrying with exponential backoff on any HTTP/network error.
+    """Send a batch, retrying with exponential backoff on transient errors.
 
-    Retries forever (capped delay) so a transient outage never loses lines --
-    it just delays them. Returns the server's response once it succeeds.
+    Network errors, timeouts, 5xx and the 4xx codes in RETRYABLE_4XX are retried
+    forever (capped delay) so an outage never loses lines -- it just delays
+    them. Any other 4xx raises IngestRejected. Returns the server's response
+    once it succeeds.
     """
     delay = 1.0
     while True:
         try:
             return send_batch(lines, source, url, api_key)
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ConnectionError) as e:
+        except urllib.error.HTTPError as e:
+            if 400 <= e.code < 500 and e.code not in RETRYABLE_4XX:
+                raise IngestRejected(_rejection_message(e)) from e
+            print(f"ship_logs: ingest failed ({e}), retrying in {delay:.0f}s", flush=True)
+            sleep(delay)
+            delay = min(delay * 2, MAX_BACKOFF)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
             print(f"ship_logs: ingest failed ({e}), retrying in {delay:.0f}s", flush=True)
             sleep(delay)
             delay = min(delay * 2, MAX_BACKOFF)
@@ -175,15 +201,18 @@ if __name__ == "__main__":
     parser.add_argument("--batch-seconds", type=float, default=FOLLOW_BATCH_SECONDS)
     args = parser.parse_args()
 
-    if args.follow:
-        run_follow(
-            args.path,
-            args.source,
-            args.url,
-            args.api_key,
-            from_start=args.from_start,
-            batch_size=args.batch_size,
-            batch_seconds=args.batch_seconds,
-        )
-    else:
-        ship(args.path, args.source, args.url, args.api_key)
+    try:
+        if args.follow:
+            run_follow(
+                args.path,
+                args.source,
+                args.url,
+                args.api_key,
+                from_start=args.from_start,
+                batch_size=args.batch_size,
+                batch_seconds=args.batch_seconds,
+            )
+        else:
+            ship(args.path, args.source, args.url, args.api_key)
+    except IngestRejected as e:
+        raise SystemExit(f"ship_logs: {e}")

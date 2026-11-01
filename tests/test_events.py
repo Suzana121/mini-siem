@@ -62,6 +62,29 @@ async def test_query_filters_and_orders_newest_first(store):
     assert await store.query(source_ip="not-an-ip") == []
 
 
+async def test_reshipping_the_same_lines_does_not_duplicate_events(store):
+    batch = [make_event(s) for s in (0, 10, 20)]
+    await store.add(batch)
+    await store.add(batch)  # the shipper retried, or the file was sent twice
+    await store.add([make_event(10), make_event(30)])  # overlapping re-send plus one new line
+    assert [e.raw for e in await store.query()] == ["line at 30", "line at 20", "line at 10", "line at 0"]
+
+
+async def test_lines_that_differ_only_in_text_are_both_kept(store):
+    first, second = make_event(5), make_event(5)
+    second.raw = "another line in the same second"
+    await store.add([first, second])
+    assert len(await store.query()) == 2
+
+
+async def test_memory_store_forgets_evicted_events_and_can_store_them_again():
+    store = MemoryEventStore(max_events=2)
+    first = make_event(0)
+    await store.add([first, make_event(10), make_event(20)])  # evicts the first
+    await store.add([first])
+    assert sorted(e.raw for e in await store.query()) == ["line at 0", "line at 20"]
+
+
 async def test_query_time_range_and_paging(store):
     await store.add([make_event(s) for s in (0, 10, 20, 30)])
     got = await store.query(since=T0 + timedelta(seconds=10), until=T0 + timedelta(seconds=20))

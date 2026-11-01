@@ -28,6 +28,39 @@ describe("admin page", () => {
     expect(JSON.parse(String(calls.filter((c) => c.method === "PATCH")[1].init.body))).toEqual({ disabled: true });
   });
 
+  it("resets a user's password with only the password in the PATCH body", async () => {
+    const { calls } = mockFetch({
+      "GET /auth/me": me("admin"),
+      "GET /users": [user],
+      "GET /api-keys": [],
+      "PATCH /users/u2": user,
+    });
+    renderApp("/admin");
+    await userEvent.click(await screen.findByRole("button", { name: /reset password bob/i }));
+    await userEvent.type(screen.getByLabelText(/new password for bob/i), "a-new-long-passphrase");
+    await userEvent.click(screen.getByRole("button", { name: /set password/i }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    expect(JSON.parse(String(calls.find((c) => c.method === "PATCH")!.init.body))).toEqual({
+      password: "a-new-long-passphrase",
+    });
+    expect(await screen.findByText(/password updated/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/new password for bob/i)).not.toBeInTheDocument();
+  });
+
+  it("lets the admin dismiss a stale update error", async () => {
+    mockFetch({
+      "GET /auth/me": me("admin"),
+      "GET /users": [{ ...user, role: "admin" }],
+      "GET /api-keys": [],
+      "PATCH /users/u2": () => ({ status: 409, json: { detail: "cannot remove the last admin" } }),
+    });
+    renderApp("/admin");
+    await userEvent.selectOptions(await screen.findByLabelText("Role for bob"), "viewer");
+    expect(await screen.findByText(/cannot remove the last admin/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    await waitFor(() => expect(screen.queryByText(/cannot remove the last admin/)).not.toBeInTheDocument());
+  });
+
   it("shows the last-admin 409 message", async () => {
     mockFetch({
       "GET /auth/me": me("admin"),

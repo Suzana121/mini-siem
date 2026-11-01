@@ -1,10 +1,12 @@
 """Unit tests for the --follow tail logic in scripts/ship_logs.py (no network, no Docker)."""
 
+import io
 import os
+import urllib.error
 
 import pytest
 
-from scripts.ship_logs import LogFollower, run_follow, send_with_retry
+from scripts.ship_logs import IngestRejected, LogFollower, run_follow, send_with_retry
 
 
 def test_follow_from_end_ignores_existing_content(tmp_path):
@@ -146,3 +148,42 @@ def test_run_follow_flushes_small_batch_after_timeout(tmp_path, monkeypatch):
     )
 
     assert sent == [["only line"]]
+
+
+def _http_error(code: int, detail: str = "nope") -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("http://api/ingest", code, "err", {}, io.BytesIO(('{"detail": "%s"}' % detail).encode()))
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 413, 422])
+def test_permanent_4xx_is_not_retried(monkeypatch, code):
+    attempts = []
+
+    def fake_send(*a):
+        attempts.append(1)
+        raise _http_error(code, "invalid api key")
+
+    monkeypatch.setattr("scripts.ship_logs.send_batch", fake_send)
+    with pytest.raises(IngestRejected, match=f"HTTP {code}.*not retrying"):
+        send_with_retry(["a"], "auth.log", "http://api", None, sleep=lambda s: pytest.fail("must not sleep"))
+    assert len(attempts) == 1
+
+
+def test_auth_rejection_hints_at_the_api_key(monkeypatch):
+    monkeypatch.setattr("scripts.ship_logs.send_batch", lambda *a: (_ for _ in ()).throw(_http_error(401)))
+    with pytest.raises(IngestRejected, match="--api-key"):
+        send_with_retry(["a"], "auth.log", "http://api", None, sleep=lambda s: None)
+
+
+@pytest.mark.parametrize("code", [429, 500, 502, 503])
+def test_transient_http_errors_are_retried(monkeypatch, code):
+    attempts = []
+
+    def fake_send(*a):
+        attempts.append(1)
+        if len(attempts) < 2:
+            raise _http_error(code)
+        return {"received": 1, "parsed": 1, "unparsed": 0}
+
+    monkeypatch.setattr("scripts.ship_logs.send_batch", fake_send)
+    assert send_with_retry(["a"], "auth.log", "http://api", None, sleep=lambda s: None)["parsed"] == 1
+    assert len(attempts) == 2

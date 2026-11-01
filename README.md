@@ -77,12 +77,12 @@ All settings are environment variables, documented in [`app/config.py`](app/conf
 
 ## Dashboard & access control
 
-The dashboard (React + TypeScript, source in [`web/`](web)) is served at `/` by the API container: alerts with KPIs, filters and search; per-alert detail with risk factors, evidence and **related raw events** from the event store (`EVENT_RETENTION`, default 7d); an **ATT&CK heatmap** of tactics and techniques; and an Admin page for users and API keys.
+The dashboard (React + TypeScript, source in [`web/`](web)) is served at `/` by the API container: alerts with KPIs, filters and search; per-alert detail with risk factors, evidence and **related raw events** from the event store (`EVENT_RETENTION`, default 7d); an **ATT&CK heatmap** of tactics and techniques; and an Admin page for users (roles, disable, password reset) and API keys.
 
 - **Roles.** `viewer` reads, `analyst` also triages (acknowledge/close), `admin` also manages users and API keys.
 - **First admin.** Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` (12+ characters) before the first start, or run `python -m scripts.create_user NAME --role admin`.
 - **Sessions.** Passwords are argon2id hashes; sessions are opaque tokens stored hashed, in an HttpOnly, SameSite=Strict cookie, with a CSRF header on writes and login throttling. Set `COOKIE_SECURE=true` behind TLS (the compose file defaults to `false` for local HTTP).
-- **Log shippers** authenticate with an API key (Admin page): `python scripts/ship_logs.py samples/auth.log --api-key msk_...` or `SIEM_API_KEY`.
+- **Log shippers** authenticate with an API key (Admin page): `python scripts/ship_logs.py samples/auth.log --api-key msk_...` or `SIEM_API_KEY`. Transient failures (network, 5xx, 429) are retried with backoff; a permanent rejection (revoked key, unknown source, malformed batch) stops the shipper with a clear message instead of retrying forever. Re-sending the same lines is safe: the event store ignores exact duplicates (same source, host, timestamp and text) and alert dedup merges repeats.
 - **Frontend development:** `cd web && npm ci && npm run dev` (proxies to the API on :8000); `npm test`, `npm run build`.
 
 ## Attack lab
