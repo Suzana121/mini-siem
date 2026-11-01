@@ -76,12 +76,12 @@ Poll resolution 20 ms; p99 over 60 samples is indicative only.
 
 | endpoint | stored alerts | response KB | p50 ms | p95 ms | p99 ms |
 |---|---|---|---|---|---|
-| GET /alerts?limit=50 | 10,089 | 59.4 | 8.5 | 10.0 | 10.5 |
-| GET /alerts?limit=1000 | 10,089 | 1,184.5 | 41.8 | 51.1 | 53.1 |
-| GET /alerts?rule_id=..&limit=50 | 10,089 | 59.4 | 8.5 | 9.4 | 10.1 |
-| GET /alerts?q=<ip> | 10,089 | 0.0 | 18.2 | 19.9 | 19.9 |
-| GET /stats/summary | 10,089 | 0.9 | 375.2 | 392.0 | 396.8 |
-| GET /stats/attack | 10,089 | 1.1 | 349.0 | 360.5 | 361.2 |
+| GET /alerts?limit=50 | 10,001 | 59.0 | 6.3 | 7.2 | 7.3 |
+| GET /alerts?limit=1000 | 10,001 | 1,177.7 | 32.8 | 39.2 | 40.9 |
+| GET /alerts?rule_id=..&limit=50 | 10,001 | 59.0 | 7.8 | 21.9 | 23.8 |
+| GET /alerts?q=<ip> | 10,001 | 0.0 | 20.5 | 22.6 | 22.6 |
+| GET /stats/summary | 10,001 | 0.7 | 27.0 | 30.9 | 31.0 |
+| GET /stats/attack | 10,001 | 0.2 | 13.6 | 17.2 | 20.6 |
 
 ## Attack lab
 

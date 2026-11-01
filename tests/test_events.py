@@ -16,10 +16,8 @@ from app.events import (
     PostgresEventStore,
     alert_events,
     attack_matrix,
-    fetch_alerts,
     parse_window,
     retention_loop,
-    summarize,
 )
 from app.detection.rules import MitreTechnique
 from app.schema import EventInfo, HostInfo, NormalizedEvent, Outcome, SourceInfo, UserInfo
@@ -151,13 +149,13 @@ async def test_summarize():
     await store.save(make_alert(rule_id="r2", ip="198.51.100.7", user="bob", severity="low", risk_score=90))
     await store.save(make_alert(rule_id="r3", ip="203.0.113.9", user="bob"))
     await store.set_status(a.id, "closed")
-    out = summarize(await store.list(), now=T0 + timedelta(hours=1))
+    out = await store.summary(now=T0 + timedelta(hours=1))
     assert out["by_status"] == {"open": 2, "acknowledged": 0, "closed": 1}
     assert out["by_severity"] == {"low": 1, "medium": 0, "high": 2, "critical": 0}
     assert out["last_24h"] == 3
     assert out["top_source_ips"][0] == {"ip": "198.51.100.7", "alerts": 2, "max_risk": 90}
     assert out["top_users"][0] == {"user": "bob", "alerts": 2}
-    assert summarize(await store.list(), now=T0 + timedelta(days=2))["last_24h"] == 0
+    assert (await store.summary(now=T0 + timedelta(days=2)))["last_24h"] == 0
 
 
 async def test_attack_matrix_orders_tactics():
@@ -174,7 +172,7 @@ async def test_attack_matrix_orders_tactics():
         alert = make_alert(rule_id=rule, severity=sev)
         alert.mitre = mitre
         await store.save(alert)
-    out = attack_matrix(await store.list())
+    out = attack_matrix(await store.technique_counts())
     assert [t["tactic"] for t in out["tactics"]] == ["Reconnaissance", "Discovery", "Impact"]
     disc = out["tactics"][1]["techniques"][0]
     assert disc == {"id": "T1046", "name": "Network Service Discovery", "alerts": 2, "max_severity": "critical"}
@@ -235,13 +233,3 @@ async def test_stats_routes(client):
     assert attack["tactics"][0]["tactic"] == "Credential Access"
     later = (T0 + timedelta(days=1)).isoformat()
     assert (await client.get("/stats/attack", params={"since": later})).json() == {"tactics": []}
-
-
-async def test_fetch_alerts_pages_past_one_listing_page():
-    store = MemoryAlertStore()
-    for i in range(2300):
-        await store.save(make_alert(seconds=i, ip=f"10.{i // 250}.{i % 250}.1"))
-    assert len(await fetch_alerts(store)) == 2300
-    since = T0 + timedelta(seconds=2000)
-    assert len(await fetch_alerts(store, since)) == 300
-    assert summarize(await fetch_alerts(store), now=T0 + timedelta(seconds=2300))["by_status"]["open"] == 2300

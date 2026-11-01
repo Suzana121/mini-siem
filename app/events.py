@@ -18,7 +18,7 @@ import asyncpg
 
 from app.detection.rules import get_field
 from app.schema import NormalizedEvent
-from app.store import StoredAlert
+from app.store import SEVERITIES, STATUSES, StoredAlert  # noqa: F401  (re-exported)
 
 log = logging.getLogger(__name__)
 
@@ -26,9 +26,6 @@ DEFAULT_MEMORY_LIMIT = 50_000
 MAX_LIMIT = 1000
 ALERT_EVENT_MARGIN = timedelta(minutes=5)
 PRUNE_INTERVAL = 3600.0
-
-SEVERITIES = ("low", "medium", "high", "critical")
-STATUSES = ("open", "acknowledged", "closed")
 
 # MITRE ATT&CK enterprise tactic order (kill-chain order).
 TACTIC_ORDER = (
@@ -271,78 +268,12 @@ async def alert_events(
     return matched[:limit]
 
 
-MAX_STATS_ALERTS = 100_000
-
-
-async def fetch_alerts(store, since: datetime | None = None) -> list[StoredAlert]:
-    """Alerts last seen since `since` (all of them if None), paged through store.list.
-
-    Capped at MAX_STATS_ALERTS so a huge history can't exhaust memory; the cap
-    keeps the newest alerts.
-    """
-    since = _utc(since)
-    alerts: list[StoredAlert] = []
-    while len(alerts) < MAX_STATS_ALERTS:
-        page = await store.list(limit=MAX_LIMIT, since=since, offset=len(alerts))
-        alerts.extend(page)
-        if len(page) < MAX_LIMIT:
-            break
-    return alerts
-
-
-def _top(counts: dict[str, int], extra: dict[str, int] | None = None, key: str = "ip") -> list[dict]:
-    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:10]
-    out = []
-    for name, n in ranked:
-        row = {key: name, "alerts": n}
-        if extra is not None:
-            row["max_risk"] = extra[name]
-        out.append(row)
-    return out
-
-
-def summarize(alerts: list[StoredAlert], now: datetime | None = None) -> dict:
-    now = now or datetime.now(timezone.utc)
-    by_status = dict.fromkeys(STATUSES, 0)
-    by_severity = dict.fromkeys(SEVERITIES, 0)
-    last_24h = 0
-    ips: dict[str, int] = {}
-    risk: dict[str, int] = {}
-    users: dict[str, int] = {}
-    for a in alerts:
-        by_status[a.status] = by_status.get(a.status, 0) + 1
-        by_severity[a.severity] = by_severity.get(a.severity, 0) + 1
-        if _utc(a.last_seen) >= now - timedelta(hours=24):
-            last_24h += 1
-        if a.source.ip:
-            ips[a.source.ip] = ips.get(a.source.ip, 0) + 1
-            risk[a.source.ip] = max(risk.get(a.source.ip, 0), a.risk_score)
-        if a.user.name:
-            users[a.user.name] = users.get(a.user.name, 0) + 1
-    return {
-        "by_status": by_status,
-        "by_severity": by_severity,
-        "last_24h": last_24h,
-        "top_source_ips": _top(ips, risk, "ip"),
-        "top_users": _top(users, None, "user"),
-    }
-
-
-def attack_matrix(alerts: list[StoredAlert]) -> dict:
-    """Alerts grouped by ATT&CK tactic (kill-chain order) then technique."""
-    severity_rank = {s: i for i, s in enumerate(SEVERITIES)}
-    tactics: dict[str, dict[str, dict]] = {}
-    for a in alerts:
-        for tech in a.mitre:
-            row = tactics.setdefault(tech.tactic, {}).setdefault(
-                tech.id, {"id": tech.id, "name": tech.name, "alerts": 0, "max_severity": a.severity}
-            )
-            row["alerts"] += 1
-            if severity_rank.get(a.severity, -1) > severity_rank.get(row["max_severity"], -1):
-                row["max_severity"] = a.severity
+def attack_matrix(techniques: list[dict]) -> dict:
+    """Technique rows from AlertStore.technique_counts, grouped by tactic in kill-chain order."""
+    tactics: dict[str, list[dict]] = {}
+    for row in techniques:
+        tactics.setdefault(row["tactic"], []).append(
+            {k: row[k] for k in ("id", "name", "alerts", "max_severity")}
+        )
     ordered = sorted(tactics, key=lambda t: (_TACTIC_RANK.get(t.lower(), len(TACTIC_ORDER)), t))
-    return {
-        "tactics": [
-            {"tactic": t, "techniques": sorted(tactics[t].values(), key=lambda r: r["id"])} for t in ordered
-        ]
-    }
+    return {"tactics": [{"tactic": t, "techniques": sorted(tactics[t], key=lambda r: r["id"])} for t in ordered]}

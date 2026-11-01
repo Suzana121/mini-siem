@@ -13,7 +13,8 @@ import hashlib
 import ipaddress
 import itertools
 import json
-from datetime import datetime, timedelta
+import asyncio
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Protocol
 
 import asyncpg
@@ -22,6 +23,9 @@ from app.detection import Alert
 from app.detection.engine import MAX_EVIDENCE
 
 Status = Literal["open", "acknowledged", "closed"]
+SEVERITIES = ("low", "medium", "high", "critical")  # ascending
+STATUSES = ("open", "acknowledged", "closed")
+TOP_N = 10
 DEFAULT_DEDUP_WINDOW = timedelta(minutes=15)
 
 
@@ -70,6 +74,20 @@ def _can_merge(existing: StoredAlert, alert: Alert, window: timedelta) -> bool:
     return existing.status != "closed" and existing.last_seen >= alert.timestamp - window
 
 
+def _utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
+def _top(counts: dict[str, int], risk: dict[str, int] | None, key: str) -> list[dict]:
+    rows = []
+    for name, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:TOP_N]:
+        row = {key: name, "alerts": n}
+        if risk is not None:
+            row["max_risk"] = risk[name]
+        rows.append(row)
+    return rows
+
+
 class AlertStore(Protocol):
     async def save(self, alert: Alert) -> tuple[StoredAlert, bool]:
         """Store or merge an alert. Returns (stored alert, True if newly created)."""
@@ -89,6 +107,14 @@ class AlertStore(Protocol):
     async def get(self, alert_id: str) -> StoredAlert | None: ...
 
     async def set_status(self, alert_id: str, status: Status) -> StoredAlert | None: ...
+
+    async def summary(self, now: datetime | None = None) -> dict:
+        """Dashboard counts: by_status, by_severity, last_24h, top_source_ips, top_users."""
+        ...
+
+    async def technique_counts(self, since: datetime | None = None) -> "list[dict]":
+        """One row {tactic, id, name, alerts, max_severity} per ATT&CK technique, for alerts last seen since `since`."""
+        ...
 
     async def close(self) -> None: ...
 
@@ -134,6 +160,50 @@ class MemoryAlertStore:
             alert.status = status
         return alert
 
+    async def summary(self, now: datetime | None = None) -> dict:
+        now = _utc(now or datetime.now(timezone.utc))
+        by_status = dict.fromkeys(STATUSES, 0)
+        by_severity = dict.fromkeys(SEVERITIES, 0)
+        last_24h = 0
+        ips: dict[str, int] = {}
+        risk: dict[str, int] = {}
+        users: dict[str, int] = {}
+        for a in self._alerts.values():
+            by_status[a.status] = by_status.get(a.status, 0) + 1
+            by_severity[a.severity] = by_severity.get(a.severity, 0) + 1
+            if _utc(a.last_seen) >= now - timedelta(hours=24):
+                last_24h += 1
+            if a.source.ip:
+                ips[a.source.ip] = ips.get(a.source.ip, 0) + 1
+                risk[a.source.ip] = max(risk.get(a.source.ip, 0), a.risk_score)
+            if a.user.name:
+                users[a.user.name] = users.get(a.user.name, 0) + 1
+        return {
+            "by_status": by_status,
+            "by_severity": by_severity,
+            "last_24h": last_24h,
+            "top_source_ips": _top(ips, risk, "ip"),
+            "top_users": _top(users, None, "user"),
+        }
+
+    async def technique_counts(self, since: datetime | None = None) -> "list[dict]":
+        since = _utc(since) if since else None
+        rank = {s: i for i, s in enumerate(SEVERITIES)}
+        rows: dict[tuple[str, str], dict] = {}
+        for a in self._alerts.values():
+            if since is not None and _utc(a.last_seen) < since:
+                continue
+            for t in a.mitre:
+                row = rows.setdefault(
+                    (t.tactic, t.id),
+                    {"tactic": t.tactic, "id": t.id, "name": t.name, "alerts": 0, "max_severity": a.severity},
+                )
+                row["alerts"] += 1
+                row["name"] = min(row["name"], t.name)
+                if rank.get(a.severity, -1) > rank.get(row["max_severity"], -1):
+                    row["max_severity"] = a.severity
+        return list(rows.values())
+
     async def close(self) -> None:
         pass
 
@@ -158,6 +228,7 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 CREATE INDEX IF NOT EXISTS alerts_dedup ON alerts (dedup_key, last_seen DESC) WHERE status <> 'closed';
 CREATE INDEX IF NOT EXISTS alerts_triage ON alerts (status, last_seen DESC);
+CREATE INDEX IF NOT EXISTS alerts_last_seen ON alerts (last_seen DESC);
 """
 
 
@@ -274,6 +345,55 @@ class PostgresAlertStore:
             status,
         )
         return StoredAlert.model_validate_json(row["body"]) if row else None
+
+    async def summary(self, now: datetime | None = None) -> dict:
+        cutoff = _utc(now or datetime.now(timezone.utc)) - timedelta(hours=24)
+
+        def top(column: str, with_risk: bool) -> str:
+            # COLLATE "C" so ties break by code point, like the in-memory sorted()
+            risk = ", max(risk_score) AS max_risk" if with_risk else ""
+            return (
+                f"SELECT {column} AS name, count(*) AS n{risk} FROM alerts "
+                f"WHERE {column} IS NOT NULL AND {column} <> '' "
+                f'GROUP BY 1 ORDER BY n DESC, ({column}) COLLATE "C" LIMIT {TOP_N}'
+            )
+
+        by_status, by_severity, last_24h, ips, users = await asyncio.gather(
+            self._pool.fetch("SELECT status AS k, count(*) AS n FROM alerts GROUP BY 1"),
+            self._pool.fetch("SELECT severity AS k, count(*) AS n FROM alerts GROUP BY 1"),
+            self._pool.fetchval("SELECT count(*) FROM alerts WHERE last_seen >= $1", cutoff),
+            self._pool.fetch(top("body->'source'->>'ip'", True)),
+            self._pool.fetch(top("body->'user'->>'name'", False)),
+        )
+
+        def counts(known: tuple[str, ...], rows) -> dict[str, int]:
+            out = dict.fromkeys(known, 0)
+            out.update({r["k"]: r["n"] for r in rows})
+            return out
+
+        return {
+            "by_status": counts(STATUSES, by_status),
+            "by_severity": counts(SEVERITIES, by_severity),
+            "last_24h": last_24h,
+            "top_source_ips": [{"ip": r["name"], "alerts": r["n"], "max_risk": r["max_risk"]} for r in ips],
+            "top_users": [{"user": r["name"], "alerts": r["n"]} for r in users],
+        }
+
+    async def technique_counts(self, since: datetime | None = None) -> "list[dict]":
+        rows = await self._pool.fetch(
+            """
+            SELECT t->>'tactic' AS tactic, t->>'id' AS id, min(t->>'name') AS name, count(*) AS alerts,
+                   (array_agg(a.severity ORDER BY array_position($2::text[], a.severity) DESC NULLS LAST))[1]
+                       AS max_severity
+            FROM alerts a
+            CROSS JOIN LATERAL jsonb_array_elements(COALESCE(a.body->'mitre', '[]'::jsonb)) AS t
+            WHERE $1::timestamptz IS NULL OR a.last_seen >= $1
+            GROUP BY 1, 2
+            """,
+            _utc(since) if since else None,
+            list(SEVERITIES),
+        )
+        return [dict(r) for r in rows]
 
     async def close(self) -> None:
         await self._pool.close()

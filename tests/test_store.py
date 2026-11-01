@@ -12,8 +12,9 @@ from datetime import timedelta
 import pytest
 
 from app.detection.engine import MAX_EVIDENCE
+from app.detection.rules import MitreTechnique
 from app.store import MemoryAlertStore, PostgresAlertStore
-from tests.conftest import make_alert
+from tests.conftest import T0, make_alert
 
 pytestmark = pytest.mark.anyio
 WINDOW = timedelta(minutes=15)
@@ -136,3 +137,63 @@ async def test_set_status(store):
 async def test_unknown_id(store):
     assert await store.get("nope") is None
     assert await store.set_status("nope", "closed") is None
+
+
+async def test_summary_and_technique_counts_match_across_stores(store):
+    """Same fixture through both stores must aggregate identically (ties, unicode, unknown IPs, since)."""
+    recon = MitreTechnique(id="T1595", name="Active Scanning", tactic="Reconnaissance")
+    disc = MitreTechnique(id="T1046", name="Network Service Discovery", tactic="Discovery")
+    brute = MitreTechnique(id="T1110", name="Brute Force", tactic="Credential Access")
+    fixture = [
+        dict(rule_id="a", seconds=0, ip="198.51.100.7", user="root", severity="low", risk_score=40, mitre=[brute]),
+        dict(rule_id="b", seconds=60, ip="198.51.100.7", user="bob", severity="critical", risk_score=95, mitre=[brute, disc]),
+        dict(rule_id="c", seconds=120, ip="203.0.113.9", user="bob", severity="medium", risk_score=10, mitre=[recon]),
+        dict(rule_id="d", seconds=180, ip="203.0.113.10", user="alice", severity="high", risk_score=70, mitre=[]),
+        dict(rule_id="e", seconds=240, ip="10.0.0.2", user="Zoë", severity="high", risk_score=70, mitre=[disc, recon]),
+        dict(rule_id="f", seconds=300, ip=None, user=None, severity="low", risk_score=5, mitre=[brute]),
+    ]
+    saved = []
+    for spec in fixture:
+        mitre = spec.pop("mitre")
+        alert = make_alert(**spec)
+        alert.mitre = mitre
+        stored, _ = await store.save(alert)
+        saved.append(stored)
+    await store.set_status(saved[0].id, "closed")
+    await store.set_status(saved[1].id, "acknowledged")
+
+    now = T0 + timedelta(hours=24, seconds=90)  # alerts 0 and 60 are older than 24h
+    summary = await store.summary(now=now)
+    assert summary["by_status"] == {"open": 4, "acknowledged": 1, "closed": 1}
+    assert summary["by_severity"] == {"low": 2, "medium": 1, "high": 2, "critical": 1}
+    assert summary["last_24h"] == 4
+    assert summary["top_source_ips"] == [
+        {"ip": "198.51.100.7", "alerts": 2, "max_risk": 95},
+        {"ip": "10.0.0.2", "alerts": 1, "max_risk": 70},
+        {"ip": "203.0.113.10", "alerts": 1, "max_risk": 70},
+        {"ip": "203.0.113.9", "alerts": 1, "max_risk": 10},
+    ]
+    assert summary["top_users"] == [
+        {"user": "bob", "alerts": 2},
+        {"user": "Zoë", "alerts": 1},
+        {"user": "alice", "alerts": 1},
+        {"user": "root", "alerts": 1},
+    ]
+
+    def by_key(rows):
+        return {(r["tactic"], r["id"]): r for r in rows}
+
+    techniques = by_key(await store.technique_counts())
+    assert techniques[("Credential Access", "T1110")] == {
+        "tactic": "Credential Access", "id": "T1110", "name": "Brute Force", "alerts": 3, "max_severity": "critical",
+    }
+    assert techniques[("Discovery", "T1046")]["max_severity"] == "critical"
+    assert techniques[("Reconnaissance", "T1595")]["alerts"] == 2
+    assert len(techniques) == 3
+
+    recent = by_key(await store.technique_counts(since=T0 + timedelta(seconds=100)))
+    assert {k: v["alerts"] for k, v in recent.items()} == {
+        ("Reconnaissance", "T1595"): 2,
+        ("Discovery", "T1046"): 1,
+        ("Credential Access", "T1110"): 1,
+    }

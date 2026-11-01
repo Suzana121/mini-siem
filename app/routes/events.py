@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth import require_role
-from app.events import alert_events, attack_matrix, fetch_alerts, parse_window, summarize
+from app.events import alert_events, attack_matrix, parse_window
 from app.schema import NormalizedEvent
 
 router = APIRouter()
@@ -50,9 +50,9 @@ async def events_for_alert(request: Request, alert_id: str, _=Depends(viewer)) -
 
 @router.get("/stats/summary")
 async def stats_summary(request: Request, _=Depends(viewer)) -> dict:
-    return summarize(await fetch_alerts(request.app.state.store))
+    return await request.app.state.store.summary()
 
 
 @router.get("/stats/attack")
 async def stats_attack(request: Request, since: datetime | None = None, _=Depends(viewer)) -> dict:
-    return attack_matrix(await fetch_alerts(request.app.state.store, since))
+    return attack_matrix(await request.app.state.store.technique_counts(since))
