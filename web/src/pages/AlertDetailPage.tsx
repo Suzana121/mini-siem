@@ -34,7 +34,7 @@ function EventsTable({ events }: { events: NormalizedEvent[] }) {
               <td>{e.user.name ?? "—"}</td>
               <td>{e.source.ip ?? "—"}</td>
               <td>{e.host.name ?? "—"}</td>
-              <td>
+              <td className="raw-cell">
                 <code className="raw">{e.raw}</code>
               </td>
             </tr>

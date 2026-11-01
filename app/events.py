@@ -249,11 +249,20 @@ async def alert_events(
 ) -> list[NormalizedEvent]:
     """Events behind an alert: same host/source IP/group fields, first_seen-5m .. last_seen+5m.
 
-    Returned oldest first, so they read like a log.
+    Returned oldest first, so they read like a log. An alert with no group fields and no
+    source IP (e.g. a local sudo failure) would otherwise match every event on the host in
+    the window, so its user name/target narrow the match instead.
     """
     group = {k: v for k, v in alert.group.items() if v is not None}
+    source_ip = alert.source.ip or group.get("source.ip")
+    if not group and not source_ip:
+        group = {
+            key: value
+            for key, value in (("user.name", alert.user.name), ("user.target", alert.user.target))
+            if value is not None
+        }
     events = await store.query(
-        source_ip=alert.source.ip or group.get("source.ip"),
+        source_ip=source_ip,
         host=alert.host,
         since=alert.first_seen - ALERT_EVENT_MARGIN,
         until=alert.last_seen + ALERT_EVENT_MARGIN,

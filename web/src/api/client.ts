@@ -52,6 +52,11 @@ async function errorMessage(res: Response): Promise<string> {
     const data = await res.json();
     const detail = (data as { detail?: unknown }).detail;
     if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      // FastAPI validation errors: [{loc, msg, ...}] -> readable text.
+      const parts = detail.map((d) => (d && typeof d.msg === "string" ? d.msg : JSON.stringify(d)));
+      if (parts.length) return parts.join("; ");
+    }
     if (detail !== undefined) return JSON.stringify(detail);
   } catch {
     /* not JSON */
