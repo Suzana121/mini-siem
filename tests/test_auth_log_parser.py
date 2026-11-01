@@ -76,6 +76,19 @@ def test_no_identification_string():
     assert e.source.ip == "203.0.113.45"
 
 
+def test_no_identification_string_openssh_9():
+    # Real OpenSSH 9.2p1 output for a client that connects and hangs up (captured in the lab).
+    e = parse("Nov  1 08:34:20 victim01 sshd[41]: Connection closed by 172.18.0.3 port 40422")
+    assert e.event.action == "ssh_no_identification"
+    assert e.source.ip == "172.18.0.3"
+    assert e.source.port == 40422
+
+
+def test_connection_closed_with_user_is_still_a_disconnect():
+    e = parse("Nov  1 08:34:20 victim01 sshd[41]: Connection closed by authenticating user root 172.18.0.3 port 40422 [preauth]")
+    assert e.event.action == "ssh_disconnect"
+
+
 def test_sudo_command():
     e = parse(
         "Oct 26 10:16:05 web01 sudo:   deploy : TTY=pts/0 ; PWD=/home/deploy ; "

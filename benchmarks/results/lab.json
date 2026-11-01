@@ -1,0 +1,122 @@
+{
+  "generated_at": "2026-11-01T09:22:37.291517+00:00",
+  "commit": "18aa39f9090783c43aca409eefb29a2355ccdf49",
+  "scenarios": [
+    {
+      "name": "brute-force",
+      "expected_rules": [
+        "ssh-brute-force"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [],
+      "time_to_detect_s": {
+        "ssh-brute-force": 0.0
+      }
+    },
+    {
+      "name": "spraying",
+      "expected_rules": [
+        "ssh-password-spraying"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [
+        "ssh-brute-force"
+      ],
+      "time_to_detect_s": {
+        "ssh-password-spraying": 0.0
+      }
+    },
+    {
+      "name": "brute-force-success",
+      "expected_rules": [
+        "ssh-brute-force",
+        "ssh-brute-force-success"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [
+        "ssh-password-spraying"
+      ],
+      "time_to_detect_s": {
+        "ssh-brute-force": 0.0,
+        "ssh-brute-force-success": 1.014
+      }
+    },
+    {
+      "name": "scanner",
+      "expected_rules": [
+        "ssh-scanner"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [],
+      "time_to_detect_s": {
+        "ssh-scanner": 0.0
+      }
+    },
+    {
+      "name": "root-login",
+      "expected_rules": [
+        "ssh-root-login"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [],
+      "time_to_detect_s": {
+        "ssh-root-login": 1.01
+      }
+    },
+    {
+      "name": "privesc",
+      "expected_rules": [
+        "sudo-auth-failure",
+        "sudo-credential-file-access",
+        "sudo-root-shell"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [],
+      "time_to_detect_s": {
+        "sudo-root-shell": 1.011,
+        "sudo-credential-file-access": 1.011,
+        "sudo-auth-failure": 1.011
+      }
+    },
+    {
+      "name": "persistence",
+      "expected_rules": [
+        "local-account-created",
+        "privileged-group-change",
+        "backdoor-account"
+      ],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [
+        "ssh-root-login"
+      ],
+      "time_to_detect_s": {
+        "privileged-group-change": 1.008,
+        "backdoor-account": 1.008,
+        "local-account-created": 1.008
+      }
+    },
+    {
+      "name": "benign-noise",
+      "expected_rules": [],
+      "detected": true,
+      "missing_rules": [],
+      "unexpected_rules": [],
+      "overlapping_rules": [],
+      "time_to_detect_s": {}
+    }
+  ]
+}

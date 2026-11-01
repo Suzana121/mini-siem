@@ -1,0 +1,185 @@
+{
+  "tool": "bench_e2e",
+  "machine": {
+    "generated_at": "2026-11-01T09:26:39+00:00",
+    "commit": "18aa39f9090783c43aca409eefb29a2355ccdf49",
+    "dirty_tree": true,
+    "cpu_model": "Apple M2 Max",
+    "cpu_logical_cores": 12,
+    "cpu_physical_cores": 12,
+    "ram_bytes": 34359738368,
+    "os": "Darwin 25.6.0 (arm64)",
+    "python": "CPython 3.13.2",
+    "pydantic": "2.10.4",
+    "docker": {
+      "ServerVersion": "29.9.2",
+      "NCPU": 12,
+      "MemTotal": 8319238144,
+      "OperatingSystem": "Docker Desktop",
+      "OSType": "linux",
+      "Architecture": "aarch64",
+      "Driver": "overlayfs"
+    }
+  },
+  "params": {
+    "url": "http://localhost:8793",
+    "admin_user": "admin",
+    "allow_remote": false,
+    "phases": [
+      "ingest",
+      "drain",
+      "latency",
+      "api"
+    ],
+    "clients": 4,
+    "batch_sizes": [
+      100,
+      1000,
+      10000
+    ],
+    "ingest_lines": 50000,
+    "drain_lines": 100000,
+    "bursts": 60,
+    "burst_interval": 1.0,
+    "background_rate": 200,
+    "api_alerts": 10000,
+    "api_runs": 30,
+    "poll_ms": 20,
+    "timeout": 60.0
+  },
+  "errors": [],
+  "ingest": [
+    {
+      "batch_size": 100,
+      "clients": 4,
+      "lines": 50000,
+      "requests": 500,
+      "seconds": 1.4416104579577222,
+      "lines_per_s": 34683.43318682163,
+      "requests_per_s": 346.83433186821634,
+      "request_latency": {
+        "n": 500,
+        "p50_ms": 10.718937497586012,
+        "p95_ms": 14.64217671309598,
+        "p99_ms": 22.31582120060914,
+        "max_ms": 72.57054198998958
+      }
+    },
+    {
+      "batch_size": 1000,
+      "clients": 4,
+      "lines": 50000,
+      "requests": 50,
+      "seconds": 1.1380444170208648,
+      "lines_per_s": 43935.0162895121,
+      "requests_per_s": 43.935016289512106,
+      "request_latency": {
+        "n": 50,
+        "p50_ms": 87.02416653977707,
+        "p95_ms": 101.71741854283027,
+        "p99_ms": 106.28908419865184,
+        "max_ms": 107.5968329096213
+      }
+    },
+    {
+      "batch_size": 10000,
+      "clients": 4,
+      "lines": 50000,
+      "requests": 5,
+      "seconds": 1.2573286249535158,
+      "lines_per_s": 39766.85093115456,
+      "requests_per_s": 3.9766850931154556,
+      "request_latency": {
+        "n": 5,
+        "p50_ms": 928.8677499862388,
+        "p95_ms": 994.1851332318038,
+        "p99_ms": 994.4974930677563,
+        "max_ms": 994.5755830267444
+      }
+    }
+  ],
+  "drain": {
+    "lines": 100000,
+    "ingest_seconds": 2.292511250008829,
+    "drain_seconds_after_ingest": 11.60344316600822,
+    "total_seconds": 13.895954416017048,
+    "pipeline_lines_per_s": 7196.339093105825,
+    "note": "resolution is the poll interval; includes the sentinel burst (6 lines)"
+  },
+  "latency": {
+    "bursts": 60,
+    "missed": 0,
+    "background_lines_per_s_target": 200,
+    "background_lines_sent": 12220,
+    "burst_interval_s": 1.0,
+    "poll_ms": 20,
+    "n": 60,
+    "p50_ms": 90.18337505403906,
+    "p95_ms": 97.60322230868042,
+    "p99_ms": 101.9360105646774,
+    "max_ms": 103.23804209474474,
+    "note": "latency = burst POST start to first poll that sees the alert (includes up to one poll interval)"
+  },
+  "api": [
+    {
+      "endpoint": "GET /alerts?limit=50",
+      "stored_alerts": 10089,
+      "bytes": 60801,
+      "n": 30,
+      "p50_ms": 8.453833463136107,
+      "p95_ms": 10.028556495672092,
+      "p99_ms": 10.549462286289781,
+      "max_ms": 10.735291987657547
+    },
+    {
+      "endpoint": "GET /alerts?limit=1000",
+      "stored_alerts": 10089,
+      "bytes": 1212953,
+      "n": 30,
+      "p50_ms": 41.77708353381604,
+      "p95_ms": 51.076468906830996,
+      "p99_ms": 53.08976633590646,
+      "max_ms": 53.749625105410814
+    },
+    {
+      "endpoint": "GET /alerts?rule_id=..&limit=50",
+      "stored_alerts": 10089,
+      "bytes": 60801,
+      "n": 30,
+      "p50_ms": 8.477187482640147,
+      "p95_ms": 9.440081450156868,
+      "p99_ms": 10.08260895148851,
+      "max_ms": 10.265332995913923
+    },
+    {
+      "endpoint": "GET /alerts?q=<ip>",
+      "stored_alerts": 10089,
+      "bytes": 2,
+      "n": 30,
+      "p50_ms": 18.196104501839727,
+      "p95_ms": 19.87179173156619,
+      "p99_ms": 19.912543791579083,
+      "max_ms": 19.914790987968445
+    },
+    {
+      "endpoint": "GET /stats/summary",
+      "stored_alerts": 10089,
+      "bytes": 931,
+      "n": 30,
+      "p50_ms": 375.2267084782943,
+      "p95_ms": 392.00882517616265,
+      "p99_ms": 396.7734412115533,
+      "max_ms": 398.70349992997944
+    },
+    {
+      "endpoint": "GET /stats/attack",
+      "stored_alerts": 10089,
+      "bytes": 1158,
+      "n": 30,
+      "p50_ms": 349.04637502040714,
+      "p95_ms": 360.48373572994024,
+      "p99_ms": 361.21413462562487,
+      "max_ms": 361.469249939546
+    }
+  ]
+}

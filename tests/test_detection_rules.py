@@ -95,6 +95,10 @@ CASES = {
         [line(i * 10, "sshd[1]", "Did not receive identification string from 192.0.2.5 port 1111") for i in range(3)],
         ["ssh-scanner"],
     ),
+    "3 banner-less connections (OpenSSH 9 wording)": (
+        [line(i * 10, "sshd[1]", "Connection closed by 192.0.2.5 port 1111") for i in range(3)],
+        ["ssh-scanner"],
+    ),
     "2 banner-less connections": (
         [line(i * 10, "sshd[1]", "Did not receive identification string from 192.0.2.5 port 1111") for i in range(2)],
         [],

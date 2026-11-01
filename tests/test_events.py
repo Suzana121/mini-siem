@@ -16,6 +16,7 @@ from app.events import (
     PostgresEventStore,
     alert_events,
     attack_matrix,
+    fetch_alerts,
     parse_window,
     retention_loop,
     summarize,
@@ -234,3 +235,13 @@ async def test_stats_routes(client):
     assert attack["tactics"][0]["tactic"] == "Credential Access"
     later = (T0 + timedelta(days=1)).isoformat()
     assert (await client.get("/stats/attack", params={"since": later})).json() == {"tactics": []}
+
+
+async def test_fetch_alerts_pages_past_one_listing_page():
+    store = MemoryAlertStore()
+    for i in range(2300):
+        await store.save(make_alert(seconds=i, ip=f"10.{i // 250}.{i % 250}.1"))
+    assert len(await fetch_alerts(store)) == 2300
+    since = T0 + timedelta(seconds=2000)
+    assert len(await fetch_alerts(store, since)) == 300
+    assert summarize(await fetch_alerts(store), now=T0 + timedelta(seconds=2300))["by_status"]["open"] == 2300
