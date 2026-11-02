@@ -1,0 +1,13 @@
+id: web-attack-tool-agent
+title: Known attack tool user agent
+description: The User-Agent header names a well-known scanner or exploitation tool.
+severity: medium
+mitre:
+  - id: T1595.002
+    name: "Active Scanning: Vulnerability Scanning"
+    tactic: Reconnaissance
+match:
+  event.action: http_request
+  labels.http_user_agent|contains: [sqlmap, nikto, nmap scripting engine, masscan, zgrab, wpscan, dirbuster, gobuster, nuclei]
+false_positives:
+  - Your own vulnerability scans
