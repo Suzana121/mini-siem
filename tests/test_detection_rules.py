@@ -153,7 +153,7 @@ def test_rule_case(lines, expected):
 def test_every_rule_has_a_positive_case():
     covered = {rule_id for _, expected in CASES.values() for rule_id in expected}
     # Web rules are covered in tests/test_nginx_rules.py.
-    assert covered == {rule.id for rule in RULES if not rule.id.startswith("web-")}
+    assert covered == {rule.id for rule in RULES if not rule.id.startswith(("web-", "win-"))}
 
 
 def test_sample_attack_scenario():

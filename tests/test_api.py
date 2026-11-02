@@ -68,7 +68,7 @@ def test_health(client):
 
 
 def test_sources(client):
-    assert client.get("/sources").json() == ["auth.log", "nginx"]
+    assert client.get("/sources").json() == ["auth.log", "nginx", "windows"]
 
 
 def test_ingest_sample(client, sink):

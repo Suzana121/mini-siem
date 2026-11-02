@@ -1,0 +1,12 @@
+id: win-audit-log-cleared
+title: Windows audit log cleared
+description: The Security event log was cleared, a common step to hide intrusion activity.
+severity: high
+mitre:
+  - id: T1070.001
+    name: "Indicator Removal: Clear Windows Event Logs"
+    tactic: Defense Evasion
+match:
+  event.action: audit_log_cleared
+false_positives:
+  - Planned log maintenance

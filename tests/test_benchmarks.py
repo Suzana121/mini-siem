@@ -56,7 +56,7 @@ def test_generator_size_order_and_parseability():
 def test_generator_covers_every_rule_that_needs_no_feed():
     _, truth = generate(20_000, seed=1)
     covered = {t["rule_id"] for t in truth}
-    expected = {r.id for r in RULES if not r.id.startswith("web-")} - {"ssh-login-threat-intel"}  # generator emits auth.log only
+    expected = {r.id for r in RULES if not r.id.startswith(("web-", "win-"))} - {"ssh-login-threat-intel"}  # generator emits auth.log only
     assert covered == expected
 
 

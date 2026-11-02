@@ -1,0 +1,17 @@
+id: win-brute-force
+title: Windows logon brute force
+description: Five or more failed Windows logons from one IP address within a minute.
+severity: medium
+mitre:
+  - id: T1110.001
+    name: "Brute Force: Password Guessing"
+    tactic: Credential Access
+match:
+  event.action: win_logon
+  event.outcome: failure
+threshold:
+  count: 5
+  window: 60s
+  group_by: [source.ip]
+false_positives:
+  - A service account with an expired password retrying
