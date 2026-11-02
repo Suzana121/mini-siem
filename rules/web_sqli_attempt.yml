@@ -1,0 +1,18 @@
+id: web-sqli-attempt
+title: SQL injection attempt
+description: A request contained a common SQL injection payload (UNION SELECT, tautologies, time-based sleeps, comment terminators).
+severity: high
+mitre:
+  - id: T1190
+    name: Exploit Public-Facing Application
+    tactic: Initial Access
+match:
+  event.action: http_request
+  labels.http_path|re:
+    - union(\s|\+|/\*.*?\*/)+(all(\s|\+)+)?select
+    - "['\"]\\s*or\\s+['\"]?\\d+['\"]?\\s*=\\s*['\"]?\\d+"
+    - \b(sleep|benchmark|pg_sleep)\s*\(
+    - ;\s*(drop|insert|update|delete)\s
+    - information_schema
+false_positives:
+  - Security testing of your own site

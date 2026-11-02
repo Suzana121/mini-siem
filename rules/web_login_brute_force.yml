@@ -1,0 +1,20 @@
+id: web-login-brute-force
+title: Web login brute force
+description: Ten or more rejected (401/403) requests to a login or admin path from one IP within a minute.
+severity: medium
+mitre:
+  - id: T1110.001
+    name: "Brute Force: Password Guessing"
+    tactic: Credential Access
+match:
+  event.action: http_request
+  labels.http_method: POST
+  labels.http_status: ["401", "403"]
+  labels.http_path|re: (login|signin|wp-login|xmlrpc|/admin|/auth)
+threshold:
+  count: 10
+  window: 60s
+  group_by: [source.ip]
+false_positives:
+  - Mistyped passwords on a shared office IP
+  - Applications that return 200 for a failed login are not covered; they need an app-level log

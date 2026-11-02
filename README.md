@@ -125,6 +125,7 @@ Detection cost grows linearly with the number of rules, so the engine is single-
 | Source | Events extracted |
 |---|---|
 | `auth.log` / `secure` (BSD and ISO syslog headers) | SSH login success/failure, invalid users, pre-auth disconnects, scanner probes, sudo commands & failed sudo, PAM sessions, user creation, group membership changes |
+| `nginx` (nginx/Apache *combined* access log), `--source nginx` | One `http_request` event per request with method, percent-decoded path, status and user agent in labels; rules: web scanner (404 bursts), SQL injection, path traversal, login brute force, known attack-tool user agents |
 
 ## Quick start
 
@@ -199,4 +200,6 @@ TEST_DATABASE_URL=postgresql://siem:siem-dev-only@localhost:5432/siem_test .venv
 4. ✅ Dashboard — alert triage, raw-event drill-down, ATT&CK heatmap, login with roles
 5. ✅ Attack lab & benchmarks — scripted attacks against a local lab in docker compose, throughput/latency numbers
 
-More parsers (nginx access, Windows EVTX) are planned.
+6. ✅ nginx access-log parser and web rules (`samples/nginx_access.log`)
+
+Windows EVTX is planned next.

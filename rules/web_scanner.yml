@@ -1,0 +1,17 @@
+id: web-scanner
+title: Web vulnerability scanning
+description: Twenty or more requests answered with 404 from one IP within a minute, typical of directory brute-forcing and vulnerability scanners.
+severity: medium
+mitre:
+  - id: T1595.002
+    name: "Active Scanning: Vulnerability Scanning"
+    tactic: Reconnaissance
+match:
+  event.action: http_request
+  labels.http_status: "404"
+threshold:
+  count: 20
+  window: 60s
+  group_by: [source.ip]
+false_positives:
+  - Broken links or a missing asset requested by many clients behind one NAT

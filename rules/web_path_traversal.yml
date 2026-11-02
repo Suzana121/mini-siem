@@ -1,0 +1,17 @@
+id: web-path-traversal
+title: Path traversal attempt
+description: A request tried to climb out of the web root or read well-known system files.
+severity: high
+mitre:
+  - id: T1190
+    name: Exploit Public-Facing Application
+    tactic: Initial Access
+match:
+  event.action: http_request
+  labels.http_path|re:
+    - (\.\./|\.\.\\){2,}
+    - /etc/(passwd|shadow)
+    - boot\.ini
+    - win\.ini
+false_positives:
+  - Applications that legitimately pass relative paths in query strings
