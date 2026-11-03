@@ -29,3 +29,18 @@ scenarios:
   - name: benign-noise
     script: benign-noise.sh
     expected_rules: []
+  - name: web-scanner
+    script: web-scanner.sh
+    expected_rules: [web-scanner]
+  - name: web-sqli
+    script: web-sqli.sh
+    expected_rules: [web-sqli-attempt]
+  - name: web-path-traversal
+    script: web-path-traversal.sh
+    expected_rules: [web-path-traversal]
+  - name: web-login-brute-force
+    script: web-login-brute-force.sh
+    expected_rules: [web-login-brute-force]
+  - name: web-attack-tool-agent
+    script: web-attack-tool-agent.sh
+    expected_rules: [web-attack-tool-agent]

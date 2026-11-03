@@ -4,7 +4,7 @@
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        hydra nmap openssh-client netcat-openbsd sshpass python3 ca-certificates \
+        hydra nmap openssh-client netcat-openbsd sshpass curl python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY attacker/wordlist-users.txt attacker/wordlist-passwords.txt /lab/
