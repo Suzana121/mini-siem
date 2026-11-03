@@ -1,0 +1,16 @@
+id: win-encoded-powershell
+title: Encoded or hidden PowerShell
+description: PowerShell was started with an encoded command or download-cradle flags, widely used to hide malicious scripts.
+severity: high
+mitre:
+  - id: T1059.001
+    name: "Command and Scripting Interpreter: PowerShell"
+    tactic: Execution
+match:
+  event.action: process_created
+  process.name: [powershell.exe, pwsh.exe]
+  labels.command|re:
+    - \s-(e|ec|enc|encodedcommand)\s+[A-Za-z0-9+/=]{20,}
+    - \bIEX\b|Invoke-Expression|DownloadString|Net\.WebClient
+false_positives:
+  - Management tooling that passes encoded commands

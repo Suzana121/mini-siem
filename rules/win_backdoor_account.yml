@@ -1,0 +1,24 @@
+id: win-backdoor-account
+title: New Windows account added to a privileged group
+description: A local account was created and added to Administrators (or a similar group) within ten minutes.
+severity: critical
+mitre:
+  - id: T1136.001
+    name: "Create Account: Local Account"
+    tactic: Persistence
+  - id: T1098
+    name: Account Manipulation
+    tactic: Persistence
+sequence:
+  window: 10m
+  group_by: [host.name, labels.sid]
+  steps:
+    - name: created
+      match:
+        event.action: user_created
+        log_source: windows
+    - name: privileged
+      match:
+        event.action: user_added_to_group
+        log_source: windows
+        labels.group: [Administrators, Remote Desktop Users, Backup Operators]
