@@ -11,8 +11,14 @@ pipeline, so the detection rules are checked against real attacker tooling.
   (weak password, also in the attacker's wordlist, and a sudoer -- this is
   the intentionally vulnerable path), `root` (SSH login enabled). rsyslog
   writes `/var/log/auth.log`.
-- **attacker** -- `hydra`, `nmap`, `netcat`, `sshpass`. Scenario scripts
+- **attacker** -- `hydra`, `nmap`, `netcat`, `sshpass`, `curl`. Scenario scripts
   live in `lab/scenarios/`.
+- **nginx** -- stock `nginx:alpine` with a custom config (`lab/web/`): `/`
+  returns 200, `POST /login` always 401, `/admin` 403, everything else 404.
+  Writes the standard `combined` access log to a real file (the stock image
+  symlinks it to stdout) in the `lab-web-logs` volume.
+- **shipper-web** -- second shipper, same image and `lab-shipper` API key,
+  following `access.log` with `--source nginx`.
 - **shipper** -- the main repo image, running `python -m scripts.ship_logs
   --follow` against the victim's shared log volume, shipping to the real
   `/ingest` API.
@@ -20,9 +26,9 @@ pipeline, so the detection rules are checked against real attacker tooling.
   `lab-shipper` for the shipper (`scripts/create_api_key.py`), written to a
   small shared volume the shipper waits on.
 
-`victim` and `attacker` are the only members of `lab-net`, an
+`victim`, `nginx` and `attacker` are the only members of `lab-net`, an
 `internal: true` Docker network with no route to the internet or to the
-rest of the stack -- attack traffic can only ever reach `victim`. `shipper`
+rest of the stack -- attack traffic can only ever reach `victim` and `nginx`. `shipper`
 and `lab-init` need no network route to the lab at all: they read the
 victim's `auth.log` through a shared Docker volume and only ever talk to
 `api` over the stack's normal network, so `api` itself needs no change for
@@ -54,6 +60,18 @@ docker compose -f docker-compose.yml -f docker-compose.lab.yml --profile lab dow
 (keep the `lab-logs`/`lab-shared`/`lab-shipper` volumes with `-v` omitted,
 so a re-run doesn't need everything rebuilt from scratch; the next
 `lab-init` run creates a fresh API key regardless).
+
+## Web scenarios
+
+`web-scanner` (40 random-path 404s), `web-sqli` (UNION SELECT, `' OR '1'='1`,
+`sleep()`, `information_schema`), `web-path-traversal` (`../../..`, `%2f`
+variants, `win.ini`), `web-login-brute-force` (30 POSTs to `/login`, 401) and
+`web-attack-tool-agent` (sqlmap / Nikto User-Agents) are driven with `curl`
+loops (no nikto install -- it would need the whole Perl stack for no extra
+coverage). Verified against real nginx output: the combined-format lines
+parse as-is and every web rule fired with no unexpected alerts; no parser
+mismatches found. Run just these with `--only web-scanner web-sqli
+web-path-traversal web-login-brute-force web-attack-tool-agent`.
 
 ## Dedup window
 

@@ -2,7 +2,7 @@
 #   ADMIN_PASSWORD=... docker compose -f docker-compose.yml -f docker-compose.lab.yml --profile lab up -d --build
 # See lab/README.md for the full flow, scenario list and lab network layout.
 #
-# victim + attacker sit on an internal-only network (lab-net) with no route
+# victim + nginx + attacker sit on an internal-only network (lab-net) with no route
 # to the internet or to the rest of the stack. shipper and lab-init talk to
 # `api` over the stack's normal (default) network, and read the victim's
 # auth.log through a shared volume -- not over the network -- so `api`
@@ -31,6 +31,14 @@ services:
     tmpfs:
       - /run
 
+  nginx:
+    build: ./lab/web
+    hostname: web01
+    profiles: [lab]
+    networks: [lab-net]
+    volumes:
+      - lab-web-logs:/var/log/lab
+
   attacker:
     build:
       context: ./lab
@@ -39,8 +47,10 @@ services:
     networks: [lab-net]
     depends_on:
       - victim
+      - nginx
     environment:
       VICTIM_HOST: victim
+      WEB_HOST: nginx
       INTERN_PASSWORD: ${INTERN_PASSWORD:-password123}
       ROOT_PASSWORD: ${ROOT_PASSWORD:-toor}
 
@@ -89,10 +99,35 @@ services:
           --url http://api:8000 --api-key "$(cat /shared/api-key)"
     restart: unless-stopped
 
+  # Second shipper: follows nginx's access log with the nginx parser, using
+  # the same API key as the auth.log shipper.
+  shipper-web:
+    build: .
+    profiles: [lab]
+    networks: [default]
+    volumes:
+      - ./scripts:/srv/scripts:ro
+      - lab-web-logs:/lab-web-logs:ro
+      - lab-shared:/shared:ro
+    depends_on:
+      nginx:
+        condition: service_started
+      lab-init:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        while [ ! -s /shared/api-key ] || [ ! -e /lab-web-logs/access.log ]; do sleep 1; done
+        exec python -m scripts.ship_logs /lab-web-logs/access.log --follow --source nginx \
+          --url http://api:8000 --api-key "$(cat /shared/api-key)"
+    restart: unless-stopped
+
 networks:
   lab-net:
     internal: true
 
 volumes:
   lab-logs:
+  lab-web-logs:
   lab-shared:
