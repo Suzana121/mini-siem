@@ -126,7 +126,7 @@ Detection cost grows linearly with the number of rules, so the engine is single-
 |---|---|
 | `auth.log` / `secure` (BSD and ISO syslog headers) | SSH login success/failure, invalid users, pre-auth disconnects, scanner probes, sudo commands & failed sudo, PAM sessions, user creation, group membership changes |
 | `nginx` (nginx/Apache *combined* access log), `--source nginx` | One `http_request` event per request with method, percent-decoded path, status and user agent in labels; rules: web scanner (404 bursts), SQL injection, path traversal, login brute force, known attack-tool user agents |
-| `windows` (Security events as XML, one `<Event>` per line, e.g. `wevtutil qe Security /f:xml`), `--source windows` | Logon success/failure (4624/4625), process creation (4688), account created (4720), group membership (4732), audit log cleared (1102); rules: logon brute force, brute force then success, new admin account, log cleared, encoded PowerShell. Binary `.evtx` must be converted to XML first |
+| `windows` (Security events as XML, one `<Event>` per line, e.g. `wevtutil qe Security /f:xml`), `--source windows` | Logon success/failure (4624/4625), process creation (4688), account created (4720), group membership (4732), audit log cleared (1102); rules: logon brute force, brute force then success, new admin account, log cleared, encoded PowerShell. Binary `.evtx` files are read directly by `scripts/ship_logs.py` and `scripts/detect.py` (needs `python-evtx`, in `requirements-dev.txt`); `/ingest` still takes XML text lines |
 
 ## Quick start
 
