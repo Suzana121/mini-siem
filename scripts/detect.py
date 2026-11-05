@@ -13,6 +13,7 @@ from app.enrichment import Enricher, GeoIP, ThreatIntel
 from app.parsers import PARSERS
 from app.pipeline import Pipeline
 from app.store import MemoryAlertStore
+from scripts.evtx_to_xml import EvtxUnavailable, is_evtx, iter_event_xml
 
 ROOT = DEFAULT_RULES_DIR.parent
 
@@ -35,8 +36,14 @@ async def main() -> None:
     pipeline = Pipeline(DetectionEngine(load_rules(args.rules)), store, enricher)
 
     parse = PARSERS[args.source]
-    with open(args.path, encoding="utf-8", errors="replace") as f:
-        await pipeline.handle([e for line in f if (e := parse(line))])
+    if args.source == "windows" and is_evtx(args.path):  # binary .evtx -> one-line Event XML
+        try:
+            await pipeline.handle([e for line in iter_event_xml(args.path) if (e := parse(line))])
+        except EvtxUnavailable as err:
+            raise SystemExit(f"detect: {err}")
+    else:
+        with open(args.path, encoding="utf-8", errors="replace") as f:
+            await pipeline.handle([e for line in f if (e := parse(line))])
 
     alerts = sorted(await store.list(limit=10_000), key=lambda a: a.first_seen)
     for alert in alerts:
