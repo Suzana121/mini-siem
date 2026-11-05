@@ -5,7 +5,7 @@ RUN npm ci
 COPY web ./
 RUN npm run build
 
-FROM python:3.13-slim
+FROM python:3.15-slim
 
 WORKDIR /srv
 RUN useradd --create-home --uid 10001 siem
