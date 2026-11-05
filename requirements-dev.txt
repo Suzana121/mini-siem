@@ -1,2 +1,5 @@
 -r requirements.txt
 pytest==8.3.4
+
+# optional: lets scripts/ship_logs.py and scripts/detect.py read binary .evtx files
+python-evtx==0.8.1

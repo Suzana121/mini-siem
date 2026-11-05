@@ -1,5 +1,8 @@
 """Send a log file to the Mini-SIEM ingest API in batches.
 
+Binary .evtx files are converted to one-line Event XML when the source is
+"windows" (needs python-evtx, see requirements-dev.txt).
+
 Usage: python scripts/ship_logs.py samples/auth.log [--source auth.log] [--url http://localhost:8000]
        [--api-key msk_...]   (or SIEM_API_KEY; create one in the dashboard under Admin)
 
@@ -21,6 +24,11 @@ import os
 import time
 import urllib.error
 import urllib.request
+
+try:
+    from scripts.evtx_to_xml import EvtxUnavailable, is_evtx, iter_event_xml
+except ImportError:  # run as `python scripts/ship_logs.py`
+    from evtx_to_xml import EvtxUnavailable, is_evtx, iter_event_xml
 
 BATCH_SIZE = 1000
 FOLLOW_BATCH_SIZE = 500
@@ -80,9 +88,16 @@ def send_with_retry(lines: list[str], source: str, url: str, api_key: str | None
             delay = min(delay * 2, MAX_BACKOFF)
 
 
-def ship(path: str, source: str, url: str, api_key: str | None = None) -> None:
+def read_lines(path: str, source: str) -> list[str]:
+    """Non-empty lines of `path`; .evtx files (source windows) become one-line Event XML."""
+    if source == "windows" and is_evtx(path):
+        return list(iter_event_xml(path))
     with open(path, encoding="utf-8", errors="replace") as f:
-        lines = [line.rstrip("\n") for line in f if line.strip()]
+        return [line.rstrip("\n") for line in f if line.strip()]
+
+
+def ship(path: str, source: str, url: str, api_key: str | None = None) -> None:
+    lines = read_lines(path, source)
 
     totals = {"received": 0, "parsed": 0, "unparsed": 0}
     for start in range(0, len(lines), BATCH_SIZE):
@@ -201,6 +216,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch-seconds", type=float, default=FOLLOW_BATCH_SECONDS)
     args = parser.parse_args()
 
+    if args.follow and args.source == "windows" and is_evtx(args.path):
+        raise SystemExit("ship_logs: --follow cannot tail a binary .evtx file; convert it with scripts/evtx_to_xml.py")
     try:
         if args.follow:
             run_follow(
@@ -214,5 +231,7 @@ if __name__ == "__main__":
             )
         else:
             ship(args.path, args.source, args.url, args.api_key)
+    except EvtxUnavailable as e:
+        raise SystemExit(f"ship_logs: {e}")
     except IngestRejected as e:
         raise SystemExit(f"ship_logs: {e}")
