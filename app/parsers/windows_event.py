@@ -3,7 +3,7 @@
 Produce the input on Windows with
     wevtutil qe Security /f:xml /rd:false
 or from an .evtx file with a converter such as `evtx_dump -o xml`, then collapse
-each event onto one line. Binary .evtx files are not read directly.
+each event onto one line. Binary .evtx files are converted by scripts/evtx_to_xml.py (used by ship_logs and detect).
 
 Handled event ids (everything else returns None):
     4624/4625  logon success/failure   -> win_logon      (labels.logon_type)
