@@ -65,7 +65,7 @@ def test_collapse_is_single_line_and_parses():
     assert "cmd /c whoami" in line  # newline inside text becomes a space
     event = parse_line(line)
     assert event is not None
-    assert event.event.action == "win_logon" or event.event.outcome is not None
+    assert event.event.action == "win_logon"
 
 
 def test_is_evtx():
